@@ -169,7 +169,7 @@ def reconstruir_globalcellid(df: pd.DataFrame, tech: str, tabla_mnc: pd.DataFram
             else:
                 mnc_str = "000"
 
-            nuevo_global = f"{tech} 732/{mnc_str}/{freq_value}/R"
+            nuevo_global = f"{tech} 732/{mnc_str}/{pci_value}{freq_value}/R"
             df.iat[ii, idx_global] = nuevo_global
 
         # Intentar copiar GlobalCellId de filas siguientes con mismo PCI
@@ -483,28 +483,35 @@ def generar_kmz_potencia(df_conservada: pd.DataFrame, CODIGO: str, LOCALIDAD: st
 
     if archivo_coord.exists():
         try:
+            puntos = []
             with open(archivo_coord, "r", encoding="utf-8") as f:
-                lineas = [l.strip() for l in f.readlines() if l.strip()]
+                for linea in f:
+                    linea = linea.strip()
+                    if not linea:
+                        continue
 
-            if len(lineas) < 2:
-                print("⚠ El archivo debe contener dos líneas: origen y estación.")
+                    partes = [x.strip() for x in linea.split(",")]
+
+                    if len(partes) != 3:
+                        print(f"⚠ Línea inválida en archivo: {linea}")
+                        continue
+
+                    nombre, lat, lon = partes
+                    lat = float(lat)
+                    lon = float(lon)
+
+                    puntos.append((nombre, lat, lon))
+
+            if len(puntos) == 0:
+                print("⚠ No se encontraron puntos válidos en el archivo.")
                 return
 
-            # ---- Línea 1 → Punto de origen del círculo ----
-            if "," in lineas[0]:
-                lat0, lon0 = map(float, lineas[0].split(","))
-            else:
-                lat0, lon0 = map(float, lineas[0].split())
-
-            # ---- Línea 2 → Punto de estación ----
-            if "," in lineas[1]:
-                lat_est, lon_est = map(float, lineas[1].split(","))
-            else:
-                lat_est, lon_est = map(float, lineas[1].split())
+            # Primer punto = origen del círculo
+            nombre_origen, lat0, lon0 = puntos[0]
 
             # Parámetros del círculo
-            radio_m = 2000   # 2 km
-            R = 6371000      # Radio terrestre
+            radio_m = 2000
+            R = 6371000
             coords_circulo = []
 
             for ang in range(0, 361):
@@ -523,48 +530,39 @@ def generar_kmz_potencia(df_conservada: pd.DataFrame, CODIGO: str, LOCALIDAD: st
 
                 coords_circulo.append((math.degrees(lon_c), math.degrees(lat_c)))
 
-            # Cerrar polígono (primer punto = último punto)
-            coords_circulo.append(coords_circulo[0])
+            coords_circulo.append(coords_circulo[0])  # cerrar polígono
 
-            # Crear carpeta
-            folder_circulo = kml.newfolder(name="Círculo 2 km + puntos origen/estación")
+            # Carpeta donde se guardan el círculo y los puntos
+            folder_circulo = kml.newfolder(name="Círculo 2 km + puntos archivo")
 
-            # --- Dibujar el círculo ---
+            # Dibujar círculo sin relleno, borde fucsia
             pol = folder_circulo.newpolygon(
-                name="Radio 2 km",
+                name=f"Círculo de 2 km alrededor de {nombre_origen}",
                 outerboundaryis=coords_circulo,
             )
-
-            # Sin relleno
             pol.style.polystyle.fill = 0
-
-            # Borde fucsia (#ff00ff)
-            pol.style.linestyle.color = simplekml.Color.hex("ff00ff")
+            pol.style.linestyle.color = simplekml.Color.hex("ff00ff")  # fucsia
             pol.style.linestyle.width = 3
             pol.altitudemode = simplekml.AltitudeMode.clamptoground
 
-            # --- Punto origen ---
-            p_origen = folder_circulo.newpoint(
-                name="PMCP",
-                coords=[(lon0, lat0)]
-            )
-            p_origen.style.iconstyle.color = simplekml.Color.hex("ff00ff")
-            p_origen.style.iconstyle.scale = 1.1
-
-            # --- Punto estación ---
-            p_est = folder_circulo.newpoint(
-                name="EB",
-                coords=[(lon_est, lat_est)]
-            )
-            p_est.style.iconstyle.color = simplekml.Color.blue
-            p_est.style.iconstyle.scale = 1.1
+            # Dibujar cada punto del archivo
+            for nombre, lat, lon in puntos:
+                p = folder_circulo.newpoint(
+                    name=nombre,
+                    coords=[(lon, lat)]
+                )
+                # Color distinto para distinguir puntos cargados desde archivo
+                if nombre == nombre_origen:
+                    p.style.iconstyle.color = simplekml.Color.hex("ff00ff")  # fucsia para origen
+                else:
+                    p.style.iconstyle.color = simplekml.Color.blue          # azul para estación
+                p.style.iconstyle.scale = 1.2
 
         except Exception as e:
             print(f"⚠ Error procesando coordenadas: {e}")
 
     else:
         print(f"⚠ No existe el archivo de coordenadas: {archivo_coord}")
-
 
     ruta_kmz = SALIDAS / f"{CODIGO} {LOCALIDAD} RSRP_puntos.kmz"
     ruta_kmz = safe_save_generic(ruta_kmz)
