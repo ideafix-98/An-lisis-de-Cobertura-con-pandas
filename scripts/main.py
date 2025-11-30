@@ -484,17 +484,27 @@ def generar_kmz_potencia(df_conservada: pd.DataFrame, CODIGO: str, LOCALIDAD: st
     if archivo_coord.exists():
         try:
             with open(archivo_coord, "r", encoding="utf-8") as f:
-                contenido = f.read().strip()
+                lineas = [l.strip() for l in f.readlines() if l.strip()]
 
-            # Archivo en formato: LAT, LON
-            if "," in contenido:
-                lat0, lon0 = map(float, contenido.split(","))
+            if len(lineas) < 2:
+                print("⚠ El archivo debe contener dos líneas: origen y estación.")
+                return
+
+            # ---- Línea 1 → Punto de origen del círculo ----
+            if "," in lineas[0]:
+                lat0, lon0 = map(float, lineas[0].split(","))
             else:
-                lat0, lon0 = map(float, contenido.split())
+                lat0, lon0 = map(float, lineas[0].split())
 
-            # Radio del círculo
-            radio_m = 2000
-            R = 6371000
+            # ---- Línea 2 → Punto de estación ----
+            if "," in lineas[1]:
+                lat_est, lon_est = map(float, lineas[1].split(","))
+            else:
+                lat_est, lon_est = map(float, lineas[1].split())
+
+            # Parámetros del círculo
+            radio_m = 2000   # 2 km
+            R = 6371000      # Radio terrestre
             coords_circulo = []
 
             for ang in range(0, 361):
@@ -513,31 +523,48 @@ def generar_kmz_potencia(df_conservada: pd.DataFrame, CODIGO: str, LOCALIDAD: st
 
                 coords_circulo.append((math.degrees(lon_c), math.degrees(lat_c)))
 
-            # cerrar polígono
+            # Cerrar polígono (primer punto = último punto)
             coords_circulo.append(coords_circulo[0])
 
             # Crear carpeta
-            folder_circulo = kml.newfolder(name="Círculo 2 km origen")
+            folder_circulo = kml.newfolder(name="Círculo 2 km + puntos origen/estación")
 
+            # --- Dibujar el círculo ---
             pol = folder_circulo.newpolygon(
                 name="Radio 2 km",
                 outerboundaryis=coords_circulo,
             )
 
-            # SIN RELLENO
+            # Sin relleno
             pol.style.polystyle.fill = 0
 
-            # BORDE PÚRPURA
-            pol.style.linestyle.color = simplekml.Color.purple
-            pol.style.linestyle.width = 3   # un grosor mayor ayuda a verlo mejor
-
+            # Borde fucsia (#ff00ff)
+            pol.style.linestyle.color = simplekml.Color.hex("ff00ff")
+            pol.style.linestyle.width = 3
             pol.altitudemode = simplekml.AltitudeMode.clamptoground
 
+            # --- Punto origen ---
+            p_origen = folder_circulo.newpoint(
+                name="PMCP",
+                coords=[(lon0, lat0)]
+            )
+            p_origen.style.iconstyle.color = simplekml.Color.hex("ff00ff")
+            p_origen.style.iconstyle.scale = 1.1
+
+            # --- Punto estación ---
+            p_est = folder_circulo.newpoint(
+                name="EB",
+                coords=[(lon_est, lat_est)]
+            )
+            p_est.style.iconstyle.color = simplekml.Color.blue
+            p_est.style.iconstyle.scale = 1.1
+
         except Exception as e:
-            print(f"⚠ Error leyendo o procesando coordenadas del círculo: {e}")
+            print(f"⚠ Error procesando coordenadas: {e}")
 
     else:
         print(f"⚠ No existe el archivo de coordenadas: {archivo_coord}")
+
 
     ruta_kmz = SALIDAS / f"{CODIGO} {LOCALIDAD} RSRP_puntos.kmz"
     ruta_kmz = safe_save_generic(ruta_kmz)
