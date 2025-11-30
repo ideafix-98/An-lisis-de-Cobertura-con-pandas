@@ -385,7 +385,11 @@ def generar_resumen_rsrp(df: pd.DataFrame) -> pd.DataFrame:
     buenas_4g = len(df_4g[df_4g["RSRP (dBm)"] >= -100])
     malas_4g = len(df_4g[df_4g["RSRP (dBm)"] < -100])
 
-    df_validas = df_4g[df_4g["Exclusiones"] == "muestra conservada"].copy()
+    #df_validas = df_4g[df_4g["Exclusiones"] == "muestra conservada"].copy()
+    df_validas = df_4g[
+        (df_4g["Exclusiones"] == "muestra conservada") &
+        (df_4g["dentro_2km"] == "si")
+    ].copy()
     total_validas = len(df_validas)
     buenas_validas = len(df_validas[df_validas["RSRP (dBm)"] >= -100])
     malas_validas = len(df_validas[df_validas["RSRP (dBm)"] < -100])
@@ -1130,6 +1134,25 @@ def generar_mapa_globalcellpci(df: pd.DataFrame, CODIGO: str, LOCALIDAD: str):
     plt.savefig(str(ruta_png), dpi=300, bbox_inches="tight", pad_inches=0)
     plt.close()
 
+#==============================================================================================
+# Validación dentro de 2km
+#==============================================================================================
+def distancia_haversine(lat1, lon1, lat2, lon2):
+    """
+    Devuelve la distancia en metros entre dos puntos lat/lon usando Haversine.
+    """
+    R = 6371000  # radio de la Tierra en metros
+    
+    lat1, lon1, lat2, lon2 = map(np.radians, [lat1, lon1, lat2, lon2])
+    
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    
+    a = np.sin(dlat/2)**2 + np.cos(lat1)*np.cos(lat2)*np.sin(dlon/2)**2
+    c = 2 * np.arcsin(np.sqrt(a))
+    
+    return R * c  # distancia en metros
+
 
 #==============================================================================================
 # Configuración del usuario
@@ -1236,6 +1259,37 @@ def main():
     df_procesar = df_validados.copy()
     df_procesar = df_procesar[df_procesar["PRSTM"] == OPERADOR_OBJETIVO].copy()
     df_procesar = marcar_mejor_muestra(df_procesar)
+    
+    # --------------------------------------------------------
+    # Crear la columna nueva "dentro_2km"
+    # --------------------------------------------------------
+    archivo_coord = DATOS / "coordenadas_origen.txt"
+
+    puntos_origen = []
+
+    with open(archivo_coord, "r", encoding="utf-8") as f:
+        for linea in f:
+            linea = linea.strip()
+            if not linea:
+                continue
+            
+            partes = [x.strip() for x in linea.split(",")]
+            
+            if len(partes) != 3:
+                print(f"⚠ Línea inválida en archivo de coordenadas: {linea}")
+                continue
+            
+            nombre, lat, lon = partes
+            puntos_origen.append({
+                "nombre": nombre,
+                "lat": float(lat),
+                "lon": float(lon)
+            })
+    lat0 = puntos_origen[0]["lat"]
+    lon0 = puntos_origen[0]["lon"]
+    df_procesar["dist_m"] = distancia_haversine(df_procesar["Latitud"], df_procesar["Longitud"], lat0, lon0)
+
+    df_procesar["dentro_2km"] = np.where(df_procesar["dist_m"] <= 2000, "si", "Por fuera del área")
 
     resumen = generar_resumen_rsrp(df_procesar)
     archivo_salida = carpeta_local / f"{CODIGO} {LOCALIDAD} UT_procesar.xlsx"
@@ -1244,8 +1298,13 @@ def main():
     print("✔ Archivo Excel con datos UT + resumen generado.")
 
     # 4. KMZ y mapa (solo muestras conservadas)
-    df_conservada = df_procesar[df_procesar["Exclusiones"] == "muestra conservada"].copy()
-
+    #df_conservada = df_procesar[df_procesar["Exclusiones"] == "muestra conservada"].copy()
+    df_conservada = df_procesar[
+        (df_procesar["Exclusiones"] == "muestra conservada") &
+        (df_procesar["dentro_2km"] == "si")
+    ].copy()
+    
+    
     generar_kmz_potencia(df_conservada, CODIGO, LOCALIDAD)
     generar_kmz_calidad(df_conservada, CODIGO, LOCALIDAD)
     generar_kmz_banda(df_conservada, CODIGO, LOCALIDAD)
