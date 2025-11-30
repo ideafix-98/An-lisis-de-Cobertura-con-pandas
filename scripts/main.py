@@ -169,7 +169,7 @@ def reconstruir_globalcellid(df: pd.DataFrame, tech: str, tabla_mnc: pd.DataFram
             else:
                 mnc_str = "000"
 
-            nuevo_global = f"{tech} 732/{mnc_str}/{pci_value}{freq_value}/R"
+            nuevo_global = f"{tech} 732/{mnc_str}/{pci_value}-{freq_value}/R"
             df.iat[ii, idx_global] = nuevo_global
 
         # Intentar copiar GlobalCellId de filas siguientes con mismo PCI
@@ -534,7 +534,8 @@ def generar_kmz_potencia(df_conservada: pd.DataFrame, CODIGO: str, LOCALIDAD: st
 
             # Carpeta donde se guardan el círculo y los puntos
             folder_circulo = kml.newfolder(name="Círculo 2 km + puntos archivo")
-
+            
+            ICON22 = "http://maps.google.com/mapfiles/kml/shapes/donut.png"
             # Dibujar círculo sin relleno, borde fucsia
             pol = folder_circulo.newpolygon(
                 name=f"Círculo de 2 km alrededor de {nombre_origen}",
@@ -555,7 +556,8 @@ def generar_kmz_potencia(df_conservada: pd.DataFrame, CODIGO: str, LOCALIDAD: st
                 if nombre == nombre_origen:
                     p.style.iconstyle.color = simplekml.Color.hex("ff00ff")  # fucsia para origen
                 else:
-                    p.style.iconstyle.color = simplekml.Color.blue          # azul para estación
+                    p.style.iconstyle.color = simplekml.Color.hex("ff00ff")  # fucsia para estación
+                p.style.iconstyle.icon.href = ICON22
                 p.style.iconstyle.scale = 1.2
 
         except Exception as e:
