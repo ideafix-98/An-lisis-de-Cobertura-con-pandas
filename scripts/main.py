@@ -476,7 +476,82 @@ def exportar_excel_con_resumen(df: pd.DataFrame, resumen: pd.DataFrame, ruta_sal
         df.to_excel(writer, sheet_name="Datos Procesados", index=False)
         resumen.to_excel(writer, sheet_name="Resumen RSRP", index=False)
     print(f"✔ Excel con resumen guardado: {ruta_final}")
+    
+#==============================================================================================
+# KMZ radio 2km
+#==============================================================================================
+def generar_radio_2km(CODIGO: str, LOCALIDAD: str):
+    kml = simplekml.Kml()  # <-- faltaba
 
+    archivo_coord = DATOS / "coordenadas_origen.txt"
+
+    if archivo_coord.exists():
+        try:
+            puntos = []
+            with open(archivo_coord, "r", encoding="utf-8") as f:
+                for linea in f:
+                    linea = linea.strip()
+                    if not linea:
+                        continue
+                    partes = [x.strip() for x in linea.split(",")]
+                    if len(partes) != 3:
+                        continue
+                    nombre, lat, lon = partes
+                    puntos.append((nombre, float(lat), float(lon)))
+
+            if not puntos:
+                return
+
+            nombre_origen, lat0, lon0 = puntos[0]
+            nombre_estacion, lat1, lon1 = puntos[1]
+            radio_m = 2000
+            R = 6371000
+            coords_circulo = []
+
+            for ang in range(0, 361):
+                brng = math.radians(ang)
+                lat_rad = math.radians(lat0)
+                lon_rad = math.radians(lon0)
+                lat_c = math.asin(
+                    math.sin(lat_rad) * math.cos(radio_m / R) +
+                    math.cos(lat_rad) * math.sin(radio_m / R) * math.cos(brng)
+                )
+                lon_c = lon_rad + math.atan2(
+                    math.sin(brng) * math.sin(radio_m / R) * math.cos(lat_rad),
+                    math.cos(radio_m / R) - math.sin(lat_rad) * math.sin(lat_c)
+                )
+                coords_circulo.append((math.degrees(lon_c), math.degrees(lat_c)))
+
+            coords_circulo.append(coords_circulo[0])
+
+            folder_circulo = kml.newfolder(name="Círculo 2 km + puntos archivo")
+            pol = folder_circulo.newpolygon(
+                name=f"Círculo de 2 km alrededor de {nombre_origen}",
+                outerboundaryis=coords_circulo,
+            )
+            pol.style.polystyle.fill = 0
+            pol.style.linestyle.color = simplekml.Color.hex("ff00ff")  # fucsia opaco
+            pol.style.linestyle.width = 3
+            pol.altitudemode = simplekml.AltitudeMode.clamptoground
+
+            ICON22 = "http://maps.google.com/mapfiles/kml/shapes/donut.png"
+            for nombre, lat, lon in puntos:
+                p = folder_circulo.newpoint(name=nombre, coords=[(lon, lat)])
+                p.style.iconstyle.color = simplekml.Color.hex("ff00ff")
+                p.style.iconstyle.icon.href = ICON22
+                p.style.iconstyle.scale = 1.2
+
+            ruta_kmz = SALIDAS / f"{CODIGO} {LOCALIDAD}"/ "radio_2km.kmz"
+            ruta_kmz = safe_save_generic(ruta_kmz)
+            kml.savekmz(str(ruta_kmz))
+
+        except Exception as e:
+            print(f"⚠ Error procesando coordenadas: {e}")
+
+    else:
+        print(f"⚠ No existe el archivo de coordenadas: {archivo_coord}")
+    
+    return radio_m    
 #==============================================================================================
 # KMZ de potencia (usando df ya filtrado y clasificado)
 #==============================================================================================
@@ -527,96 +602,9 @@ def generar_kmz_potencia(df_conservada: pd.DataFrame, CODIGO: str, LOCALIDAD: st
         elif color == "blue":
             pnt.style.iconstyle.color = simplekml.Color.blue
     
-    # pintar círculo con coordenadas obtenidas de archivo y establecer radio de 2km
-    # ============================================================================
-    archivo_coord = DATOS / "coordenadas_origen.txt"
+    
 
-    if archivo_coord.exists():
-        try:
-            puntos = []
-            with open(archivo_coord, "r", encoding="utf-8") as f:
-                for linea in f:
-                    linea = linea.strip()
-                    if not linea:
-                        continue
-
-                    partes = [x.strip() for x in linea.split(",")]
-
-                    if len(partes) != 3:
-                        print(f"⚠ Línea inválida en archivo: {linea}")
-                        continue
-
-                    nombre, lat, lon = partes
-                    lat = float(lat)
-                    lon = float(lon)
-
-                    puntos.append((nombre, lat, lon))
-
-            if len(puntos) == 0:
-                print("⚠ No se encontraron puntos válidos en el archivo.")
-                return
-
-            # Primer punto = origen del círculo
-            nombre_origen, lat0, lon0 = puntos[0]
-
-            # Parámetros del círculo
-            radio_m = 2000
-            R = 6371000
-            coords_circulo = []
-
-            for ang in range(0, 361):
-                brng = math.radians(ang)
-                lat_rad = math.radians(lat0)
-                lon_rad = math.radians(lon0)
-
-                lat_c = math.asin(
-                    math.sin(lat_rad) * math.cos(radio_m / R) +
-                    math.cos(lat_rad) * math.sin(radio_m / R) * math.cos(brng)
-                )
-                lon_c = lon_rad + math.atan2(
-                    math.sin(brng) * math.sin(radio_m / R) * math.cos(lat_rad),
-                    math.cos(radio_m / R) - math.sin(lat_rad) * math.sin(lat_c)
-                )
-
-                coords_circulo.append((math.degrees(lon_c), math.degrees(lat_c)))
-
-            coords_circulo.append(coords_circulo[0])  # cerrar polígono
-
-            # Carpeta donde se guardan el círculo y los puntos
-            folder_circulo = kml.newfolder(name="Círculo 2 km + puntos archivo")
-            
-            ICON22 = "http://maps.google.com/mapfiles/kml/shapes/donut.png"
-            # Dibujar círculo sin relleno, borde fucsia
-            pol = folder_circulo.newpolygon(
-                name=f"Círculo de 2 km alrededor de {nombre_origen}",
-                outerboundaryis=coords_circulo,
-            )
-            pol.style.polystyle.fill = 0
-            pol.style.linestyle.color = simplekml.Color.hex("ff00ff")  # fucsia
-            pol.style.linestyle.width = 3
-            pol.altitudemode = simplekml.AltitudeMode.clamptoground
-
-            # Dibujar cada punto del archivo
-            for nombre, lat, lon in puntos:
-                p = folder_circulo.newpoint(
-                    name=nombre,
-                    coords=[(lon, lat)]
-                )
-                # Color distinto para distinguir puntos cargados desde archivo
-                if nombre == nombre_origen:
-                    p.style.iconstyle.color = simplekml.Color.hex("ff00ff")  # fucsia para origen
-                else:
-                    p.style.iconstyle.color = simplekml.Color.hex("ff00ff")  # fucsia para estación
-                p.style.iconstyle.icon.href = ICON22
-                p.style.iconstyle.scale = 1.2
-
-        except Exception as e:
-            print(f"⚠ Error procesando coordenadas: {e}")
-
-    else:
-        print(f"⚠ No existe el archivo de coordenadas: {archivo_coord}")
-
-    ruta_kmz = SALIDAS / f"{CODIGO} {LOCALIDAD} RSRP_puntos.kmz"
+    ruta_kmz = SALIDAS / f"{CODIGO} {LOCALIDAD}"/ f"{CODIGO} {LOCALIDAD} RSRP.kmz"
     ruta_kmz = safe_save_generic(ruta_kmz)
     kml.savekmz(str(ruta_kmz))
     #print(f"✔ KMZ guardado en: {ruta_kmz}")
@@ -670,7 +658,7 @@ def generar_kmz_calidad(df_conservada: pd.DataFrame, CODIGO: str, LOCALIDAD: str
             pnt.style.iconstyle.color = simplekml.Color.lime
         elif color == "blue":
             pnt.style.iconstyle.color = simplekml.Color.blue
-    ruta_kmz = SALIDAS / f"{CODIGO} {LOCALIDAD} RSRQ_puntos.kmz"
+    ruta_kmz = SALIDAS / f"{CODIGO} {LOCALIDAD}"/ f"{CODIGO} {LOCALIDAD} RSRQ.kmz"
     ruta_kmz = safe_save_generic(ruta_kmz)
     kml.savekmz(str(ruta_kmz))
     #print(f"✔ KMZ guardado en: {ruta_kmz}")
@@ -736,7 +724,7 @@ def generar_kmz_banda(df: pd.DataFrame, CODIGO: str, LOCALIDAD: str):
         pnt.style.iconstyle.color = color_icono
         pnt.style.labelstyle.scale = 0  # sin texto en el mapa, solo al hacer clic
 
-    ruta_kmz = SALIDAS / f"{CODIGO} {LOCALIDAD} Bandas.kmz"
+    ruta_kmz = SALIDAS / f"{CODIGO} {LOCALIDAD}"/ f"{CODIGO} {LOCALIDAD} Bandas.kmz"
     ruta_kmz = safe_save_generic(ruta_kmz)
     kml.savekmz(str(ruta_kmz))
     
@@ -796,7 +784,7 @@ def generar_kmz_mnc(df: pd.DataFrame, CODIGO: str, LOCALIDAD: str, MNC_SELECCION
         pnt.style.iconstyle.color = color_icono
         pnt.style.labelstyle.scale = 0  # sin texto en el mapa, solo al hacer clic
 
-    ruta_kmz = SALIDAS / f"{CODIGO} {LOCALIDAD} MNC.kmz"
+    ruta_kmz = SALIDAS / f"{CODIGO} {LOCALIDAD}"/ f"{CODIGO} {LOCALIDAD} MNC.kmz"
     ruta_kmz = safe_save_generic(ruta_kmz)
     kml.savekmz(str(ruta_kmz))
     
@@ -888,11 +876,8 @@ def generar_kmz_globalcellpci(df: pd.DataFrame, CODIGO: str, LOCALIDAD: str):
         pnt.style.iconstyle.color = color_icono
         pnt.style.labelstyle.scale = 0
     
-    # pintar círculo con coordenadas obtenidas de archivo y establecer radio de 2km
-    # PONER CÓDIGO ACÀ
-
     # Guardar KMZ
-    ruta_kmz = SALIDAS / f"{CODIGO} {LOCALIDAD} GlobalCell_PCI.kmz"
+    ruta_kmz = SALIDAS / f"{CODIGO} {LOCALIDAD}"/ f"{CODIGO} {LOCALIDAD} GlobalCell_PCI.kmz"
     ruta_kmz = safe_save_generic(ruta_kmz)
     kml.savekmz(str(ruta_kmz))
 
@@ -900,6 +885,7 @@ def generar_kmz_globalcellpci(df: pd.DataFrame, CODIGO: str, LOCALIDAD: str):
 #==============================================================================================
 # Mapa RSRP con matplotlib
 #==============================================================================================
+"""
 def generar_mapa_rsrp(df_conservada: pd.DataFrame, CODIGO: str, LOCALIDAD: str):
     SALIDAS.mkdir(parents=True, exist_ok=True)
 
@@ -937,7 +923,72 @@ def generar_mapa_rsrp(df_conservada: pd.DataFrame, CODIGO: str, LOCALIDAD: str):
     plt.margins(0)
     plt.tight_layout()
 
-    ruta_png = SALIDAS / f"{CODIGO} {LOCALIDAD} RSRP_puntos.png"
+    ruta_png = SALIDAS / f"{CODIGO} {LOCALIDAD}"/ f"{CODIGO} {LOCALIDAD} RSRP.png"
+    ruta_png = safe_save_generic(ruta_png)
+    plt.savefig(str(ruta_png), dpi=300, bbox_inches="tight", pad_inches=0)
+    plt.close()
+ """  
+def generar_mapa_rsrp(
+    df_conservada: pd.DataFrame, 
+    CODIGO: str, 
+    LOCALIDAD: str, 
+    lat0: float, lon0: float, nombre0: str,   # primer punto
+    lat1: float, lon1: float, nombre1: str,  # segundo punto
+    radio_m: float = 2000       # radio en metros
+):
+    SALIDAS.mkdir(parents=True, exist_ok=True)
+
+    df_conservada = clasificar_rsrp(df_conservada)
+    df_plot = df_conservada[df_conservada["color_rsrp"].notna()].copy()
+
+    # Contar colores
+    count_red = (df_plot["color_rsrp"] == "red").sum()
+    count_yellow = (df_plot["color_rsrp"] == "yellow").sum()
+    count_green = (df_plot["color_rsrp"] == "green").sum()
+    count_blue = (df_plot["color_rsrp"] == "blue").sum()
+
+    plt.figure(figsize=(10, 10))
+
+    # Dibujar puntos por color
+    for color, label, count in [
+        ("red", "Rojo (-80 a -30 dBm)", count_red),
+        ("yellow", "Amarillo (-90 a -80 dBm)", count_yellow),
+        ("green", "Verde (-100 a -90 dBm)", count_green),
+        ("blue", "Azul (-150 a -100 dBm)", count_blue),
+    ]:
+        df_c = df_plot[df_plot["color_rsrp"] == color]
+        if not df_c.empty:
+            plt.scatter(
+                df_c["Longitud"],
+                df_c["Latitud"],
+                s=8,
+                c=color,
+                label=f"{label} → {count} muestras",
+            )
+
+    # Dibujar círculo alrededor de (lat0, lon0)
+    # Aproximación: 1 grado lat ≈ 111 km, 1 grado lon ≈ 111 km * cos(lat)
+    lat_radius = radio_m / 111000
+    lon_radius = radio_m / (111000 * np.cos(np.radians(lat0)))
+
+    theta = np.linspace(0, 2 * np.pi, 360)
+    circle_lat = lat0 + lat_radius * np.sin(theta)
+    circle_lon = lon0 + lon_radius * np.cos(theta)
+    plt.plot(circle_lon, circle_lat, color="magenta", linewidth=2)
+
+    # Dibujar puntos específicos
+    plt.scatter([lon0], [lat0], color="fuchsia", marker="o", s=80, label=nombre0)
+    plt.scatter([lon1], [lat1], color="orange", marker="^", s=80, label=nombre1)
+
+    total = len(df_plot)
+    plt.title(f"Mapa RSRP - {CODIGO} {LOCALIDAD}\nTotal muestras: {total}", fontsize=14)
+
+    plt.axis("off")
+    plt.legend(loc="upper right")
+    plt.margins(0)
+    plt.tight_layout()
+
+    ruta_png = SALIDAS / f"{CODIGO} {LOCALIDAD}" / f"{CODIGO} {LOCALIDAD} RSRP.png"
     ruta_png = safe_save_generic(ruta_png)
     plt.savefig(str(ruta_png), dpi=300, bbox_inches="tight", pad_inches=0)
     plt.close()
@@ -945,12 +996,20 @@ def generar_mapa_rsrp(df_conservada: pd.DataFrame, CODIGO: str, LOCALIDAD: str):
 #==============================================================================================
 # Mapa RSRQ con matplotlib
 #==============================================================================================
-def generar_mapa_rsrq(df_conservada: pd.DataFrame, CODIGO: str, LOCALIDAD: str):
+def generar_mapa_rsrq(
+    df_conservada: pd.DataFrame, 
+    CODIGO: str, 
+    LOCALIDAD: str, 
+    lat0: float, lon0: float, nombre0: str,   # primer punto
+    lat1: float, lon1: float, nombre1: str,  # segundo punto
+    radio_m: float = 2000
+):
     SALIDAS.mkdir(parents=True, exist_ok=True)
 
     df_conservada = clasificar_rsrq(df_conservada)
     df_plot = df_conservada[df_conservada["color_rsrq"].notna()].copy()
 
+    # Contar colores
     count_red = (df_plot["color_rsrq"] == "red").sum()
     count_yellow = (df_plot["color_rsrq"] == "yellow").sum()
     count_green = (df_plot["color_rsrq"] == "green").sum()
@@ -958,6 +1017,7 @@ def generar_mapa_rsrq(df_conservada: pd.DataFrame, CODIGO: str, LOCALIDAD: str):
 
     plt.figure(figsize=(10, 10))
 
+    # Dibujar puntos por color
     for color, label, count in [
         ("red", "Rojo (-10 a -0 dBm)", count_red),
         ("yellow", "Amarillo (-15 a -10.001 dBm)", count_yellow),
@@ -974,6 +1034,18 @@ def generar_mapa_rsrq(df_conservada: pd.DataFrame, CODIGO: str, LOCALIDAD: str):
                 label=f"{label} → {count} muestras",
             )
 
+    # Dibujar círculo
+    lat_radius = radio_m / 111000
+    lon_radius = radio_m / (111000 * np.cos(np.radians(lat0)))
+    theta = np.linspace(0, 2 * np.pi, 360)
+    circle_lat = lat0 + lat_radius * np.sin(theta)
+    circle_lon = lon0 + lon_radius * np.cos(theta)
+    plt.plot(circle_lon, circle_lat, color="magenta", linewidth=2)
+
+    # Dibujar puntos específicos
+    plt.scatter([lon0], [lat0], color="fuchsia", marker="o", s=80, label=nombre0)
+    plt.scatter([lon1], [lat1], color="orange", marker="^", s=80, label=nombre1)
+
     total = len(df_plot)
     plt.title(f"Mapa RSRQ - {CODIGO} {LOCALIDAD}\nTotal muestras: {total}", fontsize=14)
 
@@ -982,15 +1054,22 @@ def generar_mapa_rsrq(df_conservada: pd.DataFrame, CODIGO: str, LOCALIDAD: str):
     plt.margins(0)
     plt.tight_layout()
 
-    ruta_png = SALIDAS / f"{CODIGO} {LOCALIDAD} RSRQ_puntos.png"
+    ruta_png = SALIDAS / f"{CODIGO} {LOCALIDAD}" / f"{CODIGO} {LOCALIDAD} RSRQ.png"
     ruta_png = safe_save_generic(ruta_png)
     plt.savefig(str(ruta_png), dpi=300, bbox_inches="tight", pad_inches=0)
     plt.close()
-
+    
 #==============================================================================================
 # Mapa Banda de frecuencia
 #==============================================================================================    
-def generar_mapa_banda(df: pd.DataFrame, CODIGO: str, LOCALIDAD: str):
+def generar_mapa_banda(
+    df: pd.DataFrame,
+    CODIGO: str,
+    LOCALIDAD: str,
+    lat0: float, lon0: float, nombre0: str,
+    lat1: float, lon1: float, nombre1: str,
+    radio_m: float = 2000
+):
     SALIDAS.mkdir(parents=True, exist_ok=True)
 
     df_banda = df.copy()
@@ -1000,18 +1079,16 @@ def generar_mapa_banda(df: pd.DataFrame, CODIGO: str, LOCALIDAD: str):
         print("⚠ No hay datos con 'Banda (MHz)' para generar el mapa de bandas.")
         return
 
-    # Colores para matplotlib (hex o nombres)
     COLOR_BANDA_PLOT = {
-        "700 MHz":   "#FF0000",  # rojo
-        "850 MHz":   "#FF9900",  # naranja
-        "1900 MHz":  "#FFFF00",  # amarillo
-        "2100 MHz":  "#008000",  # verde
-        "2600 MHz":  "#0000FF",  # azul
-        "3500 MHz":  "#800080",  # morado
-        "Otra banda": "#808080", # gris
+        "700 MHz": "#FF0000",  
+        "850 MHz": "#FF9900",
+        "1900 MHz": "#FFFF00",
+        "2100 MHz": "#008000",
+        "2600 MHz": "#0000FF",
+        "3500 MHz": "#800080",
+        "Otra banda": "#808080",
     }
 
-    # Contar muestras por banda
     conteo = df_banda["Banda (MHz)"].value_counts().to_dict()
 
     plt.figure(figsize=(10, 10))
@@ -1020,7 +1097,6 @@ def generar_mapa_banda(df: pd.DataFrame, CODIGO: str, LOCALIDAD: str):
         df_b = df_banda[df_banda["Banda (MHz)"] == banda]
         color = COLOR_BANDA_PLOT.get(banda, "#808080")
         n = conteo.get(banda, 0)
-
         plt.scatter(
             df_b["Longitud"],
             df_b["Latitud"],
@@ -1028,6 +1104,18 @@ def generar_mapa_banda(df: pd.DataFrame, CODIGO: str, LOCALIDAD: str):
             c=color,
             label=f"{banda} → {n} muestras"
         )
+
+    # Dibujar círculo
+    lat_radius = radio_m / 111000
+    lon_radius = radio_m / (111000 * np.cos(np.radians(lat0)))
+    theta = np.linspace(0, 2 * np.pi, 360)
+    circle_lat = lat0 + lat_radius * np.sin(theta)
+    circle_lon = lon0 + lon_radius * np.cos(theta)
+    plt.plot(circle_lon, circle_lat, color="magenta", linewidth=2)
+
+    # Dibujar puntos específicos
+    plt.scatter([lon0], [lat0], color="fuchsia", marker="o", s=80, label=nombre0)
+    plt.scatter([lon1], [lat1], color="orange", marker="^", s=80, label=nombre1)
 
     total = len(df_banda)
     plt.title(f"Mapa por Banda (MHz) - {CODIGO} {LOCALIDAD}\nTotal muestras: {total}", fontsize=14)
@@ -1037,7 +1125,7 @@ def generar_mapa_banda(df: pd.DataFrame, CODIGO: str, LOCALIDAD: str):
     plt.margins(0)
     plt.tight_layout()
 
-    ruta_png = SALIDAS / f"{CODIGO} {LOCALIDAD} Bandas_puntos.png"
+    ruta_png = SALIDAS / f"{CODIGO} {LOCALIDAD}" / f"{CODIGO} {LOCALIDAD} Bandas.png"
     ruta_png = safe_save_generic(ruta_png)
     plt.savefig(str(ruta_png), dpi=300, bbox_inches=0, pad_inches=0)
     plt.close()
@@ -1045,7 +1133,15 @@ def generar_mapa_banda(df: pd.DataFrame, CODIGO: str, LOCALIDAD: str):
 #==============================================================================================
 # Mapa MCC-MNC con matplotlib
 #==============================================================================================
-def generar_mapa_mnc(df: pd.DataFrame, CODIGO: str, LOCALIDAD: str, MNC_SELECCIONADOS: str):
+def generar_mapa_mnc(
+    df: pd.DataFrame, 
+    CODIGO: str, 
+    LOCALIDAD: str, 
+    MNC_SELECCIONADOS: str,
+    lat0: float, lon0: float, nombre0: str,
+    lat1: float, lon1: float, nombre1: str,
+    radio_m: float = 2000
+):
     SALIDAS.mkdir(parents=True, exist_ok=True)
     df_mnc = df.copy()
     df_mnc = df_mnc[df_mnc["MCC-MNC"].notna()]
@@ -1054,13 +1150,11 @@ def generar_mapa_mnc(df: pd.DataFrame, CODIGO: str, LOCALIDAD: str, MNC_SELECCIO
         print("⚠ No hay datos con 'MCC-MNC' para generar el mapa de mnc.")
         return
 
-    # Colores para matplotlib (hex o nombres)
     COLOR_MNC_PLOT = { 
-        f"732{MNC_SELECCIONADOS[0]}": "#008000", #verde
-        f"732{MNC_SELECCIONADOS[1]}": "#0000FF"  #azul
+        f"732{MNC_SELECCIONADOS[0]}": "#008000",  # verde
+        f"732{MNC_SELECCIONADOS[1]}": "#0000FF"   # azul
     }
-    
-    # Contar muestras por mnc
+
     conteo = df_mnc["MCC-MNC"].value_counts().to_dict()
 
     plt.figure(figsize=(10, 10))
@@ -1069,7 +1163,6 @@ def generar_mapa_mnc(df: pd.DataFrame, CODIGO: str, LOCALIDAD: str, MNC_SELECCIO
         df_b = df_mnc[df_mnc["MCC-MNC"] == mnc]
         color = COLOR_MNC_PLOT.get(mnc, "#808080")
         n = conteo.get(mnc, 0)
-
         plt.scatter(
             df_b["Longitud"],
             df_b["Latitud"],
@@ -1077,6 +1170,18 @@ def generar_mapa_mnc(df: pd.DataFrame, CODIGO: str, LOCALIDAD: str, MNC_SELECCIO
             c=color,
             label=f"{mnc} → {n} muestras"
         )
+
+    # Dibujar círculo
+    lat_radius = radio_m / 111000
+    lon_radius = radio_m / (111000 * np.cos(np.radians(lat0)))
+    theta = np.linspace(0, 2 * np.pi, 360)
+    circle_lat = lat0 + lat_radius * np.sin(theta)
+    circle_lon = lon0 + lon_radius * np.cos(theta)
+    plt.plot(circle_lon, circle_lat, color="magenta", linewidth=2)
+
+    # Dibujar puntos específicos
+    plt.scatter([lon0], [lat0], color="fuchsia", marker="o", s=80, label=nombre0)
+    plt.scatter([lon1], [lat1], color="orange", marker="^", s=80, label=nombre1)
 
     total = len(df_mnc)
     plt.title(f"Mapa por MCC-MNC - {CODIGO} {LOCALIDAD}\nTotal muestras: {total}", fontsize=14)
@@ -1086,87 +1191,80 @@ def generar_mapa_mnc(df: pd.DataFrame, CODIGO: str, LOCALIDAD: str, MNC_SELECCIO
     plt.margins(0)
     plt.tight_layout()
 
-    ruta_png = SALIDAS / f"{CODIGO} {LOCALIDAD} MNC_puntos.png"
+    ruta_png = SALIDAS / f"{CODIGO} {LOCALIDAD}" / f"{CODIGO} {LOCALIDAD} MNC.png"
     ruta_png = safe_save_generic(ruta_png)
     plt.savefig(str(ruta_png), dpi=300, bbox_inches=0, pad_inches=0)
     plt.close()
 
-
 #==============================================================================================
 # Mapa GLOBALCELL/PCI
 #==============================================================================================     
-def generar_mapa_globalcellpci(df: pd.DataFrame, CODIGO: str, LOCALIDAD: str):
-    """
-    Genera un PNG con los puntos coloreados según 'Global CellId /PCI':
-    - Se identifican los 5 valores más frecuentes.
-    - Cada uno se grafica con un color distinto.
-    - Todos los demás se agrupan como 'Otros'.
-    """
-
+def generar_mapa_globalcellpci(
+    df: pd.DataFrame, 
+    CODIGO: str, 
+    LOCALIDAD: str,
+    lat0: float, lon0: float, nombre0: str,
+    lat1: float, lon1: float, nombre1: str,
+    radio_m: float = 2000
+):
     SALIDAS.mkdir(parents=True, exist_ok=True)
-
     df_gc = df.copy()
+    
     if "Global CellId /PCI" not in df_gc.columns:
         print("⚠ No existe la columna 'Global CellId /PCI' en el DataFrame.")
         return
 
     df_gc = df_gc[df_gc["Global CellId /PCI"].notna()]
-
     if df_gc.empty:
         print("⚠ No hay datos con 'Global CellId /PCI' para generar el mapa.")
         return
 
     # Top 5 valores
     vc = df_gc["Global CellId /PCI"].value_counts()
-    top_n = min(5, len(vc))  # <-- cambiado de 4 a 5
+    top_n = min(5, len(vc))
     top_vals = list(vc.head(top_n).index)
 
     def categorizar(val):
         return val if val in top_vals else "Otros"
 
     df_gc["GCID_cat"] = df_gc["Global CellId /PCI"].apply(categorizar)
-
-    # Conteo por categoría
     conteo_cat = df_gc["GCID_cat"].value_counts().to_dict()
 
-    # Colores para matplotlib (5 colores + gris para Otros)
-    colores_plot = [
-        "#FF0000",  # rojo
-        "#0000FF",  # azul
-        "#00AA00",  # verde
-        "#FFA500",  # naranja
-        "#800080",  # púrpura (nuevo color para el top 5)
-    ]
-    COLOR_CAT = {}
-    for i, val in enumerate(top_vals):
-        COLOR_CAT[val] = colores_plot[i]
-    COLOR_CAT["Otros"] = "#808080"  # gris
+    colores_plot = ["#FF0000", "#0000FF", "#00AA00", "#FFA500", "#800080"]
+    COLOR_CAT = {val: colores_plot[i] for i, val in enumerate(top_vals)}
+    COLOR_CAT["Otros"] = "#808080"
 
     plt.figure(figsize=(10, 10))
 
-    # Graficar por categoría
     for cat in conteo_cat.keys():
         df_c = df_gc[df_gc["GCID_cat"] == cat]
         color = COLOR_CAT.get(cat, "#808080")
         n = conteo_cat[cat]
-
-        if cat == "Otros":
-            label = f"Otros → {n} muestras"
-        else:
-            label = f"{cat} → {n} muestras"
+        label = f"{cat} → {n} muestras" if cat != "Otros" else f"Otros → {n} muestras"
 
         plt.scatter(
             df_c["Longitud"],
             df_c["Latitud"],
             s=8,
             c=color,
-            label=label,
+            label=label
         )
+
+    # Dibujar círculo
+    lat_radius = radio_m / 111000
+    lon_radius = radio_m / (111000 * np.cos(np.radians(lat0)))
+    theta = np.linspace(0, 2 * np.pi, 360)
+    circle_lat = lat0 + lat_radius * np.sin(theta)
+    circle_lon = lon0 + lon_radius * np.cos(theta)
+    plt.plot(circle_lon, circle_lat, color="magenta", linewidth=2)
+
+    # Dibujar puntos específicos
+    plt.scatter([lon0], [lat0], color="fuchsia", marker="o", s=80, label=nombre0)
+    plt.scatter([lon1], [lat1], color="orange", marker="^", s=80, label=nombre1)
 
     total = len(df_gc)
     plt.title(
-        f"Mapa Global CellId /PCI (top 5 + Otros) - {CODIGO} {LOCALIDAD}\n"
-        f"Total muestras: {total}",
+        f"Mapa Global CellId /PCI (top 5 + Otros) - {CODIGO} {LOCALIDAD}\nTotal muestras: {total}",
         fontsize=13
     )
 
@@ -1175,10 +1273,11 @@ def generar_mapa_globalcellpci(df: pd.DataFrame, CODIGO: str, LOCALIDAD: str):
     plt.margins(0)
     plt.tight_layout()
 
-    ruta_png = SALIDAS / f"{CODIGO} {LOCALIDAD} GlobalCell_PCI_puntos.png"
+    ruta_png = SALIDAS / f"{CODIGO} {LOCALIDAD}" / f"{CODIGO} {LOCALIDAD} GlobalCell_PCI.png"
     ruta_png = safe_save_generic(ruta_png)
     plt.savefig(str(ruta_png), dpi=300, bbox_inches="tight", pad_inches=0)
     plt.close()
+
 
 #==============================================================================================
 # Validación dentro de 2km
@@ -1231,11 +1330,11 @@ def obtener_parametros_usuario():
 # Ejecución principal
 #==============================================================================================
 def main():
-    inicio = time.time()
+    
     print("=== Iniciando procesamiento IMT ===")
 
     CODIGO, LOCALIDAD, TECNOLOGIA, MNC_SELECCIONADOS = obtener_parametros_usuario()
-
+    inicio = time.time()
     # 1. Leer CSV
     print("Buscando CSV en carpeta datos/ ...")
     input_archivos = sorted(DATOS.glob("*.csv"))
@@ -1331,8 +1430,15 @@ def main():
                 "lat": float(lat),
                 "lon": float(lon)
             })
+    
+    nombre0 = puntos_origen[0]["nombre"]
     lat0 = puntos_origen[0]["lat"]
     lon0 = puntos_origen[0]["lon"]
+    
+    nombre1 = puntos_origen[1]["nombre"]
+    lat1 = puntos_origen[1]["lat"]
+    lon1 = puntos_origen[1]["lon"]
+    
     df_procesar["dist_m"] = distancia_haversine(df_procesar["Latitud"], df_procesar["Longitud"], lat0, lon0)
 
     df_procesar["dentro_2km"] = np.where(df_procesar["dist_m"] <= 2000, "si", "Por fuera del área")
@@ -1350,18 +1456,33 @@ def main():
         (df_procesar["dentro_2km"] == "si")
     ].copy()
     
-    
+    radio_m = generar_radio_2km(CODIGO, LOCALIDAD)
     generar_kmz_potencia(df_conservada, CODIGO, LOCALIDAD)
     generar_kmz_calidad(df_conservada, CODIGO, LOCALIDAD)
     generar_kmz_banda(df_conservada, CODIGO, LOCALIDAD)
     generar_kmz_mnc(df_conservada, CODIGO, LOCALIDAD, MNC_SELECCIONADOS)
     generar_kmz_globalcellpci(df_conservada, CODIGO, LOCALIDAD)
     
-    generar_mapa_rsrp(df_conservada, CODIGO, LOCALIDAD)
-    generar_mapa_rsrq(df_conservada, CODIGO, LOCALIDAD)
-    generar_mapa_banda(df_conservada, CODIGO, LOCALIDAD)
-    generar_mapa_mnc(df_conservada, CODIGO, LOCALIDAD, MNC_SELECCIONADOS)
-    generar_mapa_globalcellpci(df_conservada, CODIGO, LOCALIDAD)
+    generar_mapa_rsrp(df_conservada, CODIGO, LOCALIDAD, 
+    lat0, lon0, nombre0, 
+    lat1, lon1, nombre1, 
+    radio_m)
+    generar_mapa_rsrq(df_conservada, CODIGO, LOCALIDAD,
+    lat0, lon0, nombre0, 
+    lat1, lon1, nombre1, 
+    radio_m)
+    generar_mapa_banda(df_conservada, CODIGO, LOCALIDAD,
+    lat0, lon0, nombre0, 
+    lat1, lon1, nombre1, 
+    radio_m)
+    generar_mapa_mnc(df_conservada, CODIGO, LOCALIDAD, MNC_SELECCIONADOS,
+    lat0, lon0, nombre0, 
+    lat1, lon1, nombre1, 
+    radio_m)
+    generar_mapa_globalcellpci(df_conservada, CODIGO, LOCALIDAD,
+    lat0, lon0, nombre0, 
+    lat1, lon1, nombre1, 
+    radio_m)
 
     fin = time.time()
     duracion = fin - inicio
