@@ -38,6 +38,52 @@ OPERADOR_OBJETIVO = "UT Colombia Móvil - Colombia Telecomunicaciones"
 # Tabla de bandas → operador → MNC
 tabla_mnc = pd.DataFrame({
     "Banda Inicial": [
+        703, 723.01, 733.01, 758, 778.01, 788, 824, 836.51, 869, 881.5,
+        1710, 1725, 1850, 1867.5, 1930, 1947.5, 2110, 2125, 2515, 2525,
+        2635, 2645, 3300, 3380, 3460, 3540
+    ],
+    "Banda Final": [
+        723, 733, 743, 778, 798, 798, 836.5, 849, 881.5, 894,
+        1725, 1755, 1865, 1910, 1945, 1990, 2125, 2155, 2525, 2555,
+        2645, 2675, 3379, 3450, 3530, 3610
+    ],
+    "Operador": [
+        "UT Colombia Móvil - Colombia Telecomunicaciones",
+        "Partner Telecom Colombia",
+        "Comcel S.A.",
+        "UT Colombia Móvil - Colombia Telecomunicaciones",
+        "Partner Telecom Colombia",
+        "Comcel S.A.",
+        "Comcel S.A.",
+        "UT Colombia Móvil - Colombia Telecomunicaciones",
+        "Comcel S.A.",
+        "UT Colombia Móvil - Colombia Telecomunicaciones",
+        "Partner Telecom Colombia",
+        "UT Colombia Móvil - Colombia Telecomunicaciones",
+        "Comcel S.A.",
+        "UT Colombia Móvil - Colombia Telecomunicaciones",
+        "Comcel S.A.",
+        "UT Colombia Móvil - Colombia Telecomunicaciones",
+        "Partner Telecom Colombia",
+        "UT Colombia Móvil - Colombia Telecomunicaciones",
+        "Partner Telecom Colombia",
+        "Comcel S.A.",
+        "Partner Telecom Colombia",
+        "Comcel S.A.",
+        "UT Colombia Móvil - Colombia Telecomunicaciones",
+        "Partner Telecom Colombia",
+        "ESTADO - LITIGIO",
+        "Comcel S.A."
+    ],
+    "MNC": [
+        103, 360, 101, 103, 360, 101, 101, 103, 101, 103,
+        360, 103, 101, 103, 101, 103, 360, 103, 360, 101,
+        360, 101, 103, 360, 111, 101
+    ]
+})
+"""
+tabla_mnc = pd.DataFrame({
+    "Banda Inicial": [
         703, 723.01, 733.01, 758, 778.01, 788, 836.51, 869, 881.51, 1710,
         1725.01, 1850, 1867.5, 1930, 1947.5, 1950, 2515, 2525.01, 2530,
         2645.01, 3380, 3389.5, 3460, 3570
@@ -79,7 +125,7 @@ tabla_mnc = pd.DataFrame({
         101, 103, 360, 111, 101
     ]
 })
-
+"""
 mapa_prstm = {
     "732101": "Comcel S.A.",
     "732103": "UT Colombia Móvil - Colombia Telecomunicaciones",
