@@ -747,8 +747,8 @@ def generar_kmz_mnc(df: pd.DataFrame, CODIGO: str, LOCALIDAD: str, MNC_SELECCION
 
     # Definir colores por mnc (KML usa Color.rgb(R,G,B,A))
     COLOR_MNC_KML = {
-        f"732{MNC_SELECCIONADOS[0]}": simplekml.Color.rgb(  0, 128,   0, 255),   # verde
-        f"732{MNC_SELECCIONADOS[1]}": simplekml.Color.rgb(  0,   0, 255, 255),   # azul
+        f"732{MNC_SELECCIONADOS[1]}": simplekml.Color.rgb(  0, 128,   0, 255),   # verde
+        f"732{MNC_SELECCIONADOS[0]}": simplekml.Color.rgb(  0,   0, 255, 255),   # azul
     }
 
     # Crear una carpeta por mnc detectada en los datos
@@ -961,7 +961,7 @@ def generar_mapa_rsrp(
             plt.scatter(
                 df_c["Longitud"],
                 df_c["Latitud"],
-                s=8,
+                s=15,
                 c=color,
                 label=f"{label} → {count} muestras",
             )
@@ -1029,7 +1029,7 @@ def generar_mapa_rsrq(
             plt.scatter(
                 df_c["Longitud"],
                 df_c["Latitud"],
-                s=8,
+                s=15,
                 c=color,
                 label=f"{label} → {count} muestras",
             )
@@ -1100,7 +1100,7 @@ def generar_mapa_banda(
         plt.scatter(
             df_b["Longitud"],
             df_b["Latitud"],
-            s=8,
+            s=15,
             c=color,
             label=f"{banda} → {n} muestras"
         )
@@ -1151,8 +1151,8 @@ def generar_mapa_mnc(
         return
 
     COLOR_MNC_PLOT = { 
-        f"732{MNC_SELECCIONADOS[0]}": "#008000",  # verde
-        f"732{MNC_SELECCIONADOS[1]}": "#0000FF"   # azul
+        f"732{MNC_SELECCIONADOS[1]}": "#008000",  # verde
+        f"732{MNC_SELECCIONADOS[0]}": "#0000FF"   # azul
     }
 
     conteo = df_mnc["MCC-MNC"].value_counts().to_dict()
@@ -1166,7 +1166,7 @@ def generar_mapa_mnc(
         plt.scatter(
             df_b["Longitud"],
             df_b["Latitud"],
-            s=8,
+            s=15,
             c=color,
             label=f"{mnc} → {n} muestras"
         )
@@ -1245,7 +1245,7 @@ def generar_mapa_globalcellpci(
         plt.scatter(
             df_c["Longitud"],
             df_c["Latitud"],
-            s=8,
+            s=15,
             c=color,
             label=label
         )
