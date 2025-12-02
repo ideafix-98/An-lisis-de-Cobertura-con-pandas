@@ -215,7 +215,7 @@ def reconstruir_globalcellid(df: pd.DataFrame, tech: str, tabla_mnc: pd.DataFram
             else:
                 mnc_str = "000"
 
-            nuevo_global = f"{tech} 732/{mnc_str}/{pci_value}-{freq_value}/R"
+            nuevo_global = f"{tech} 732/{mnc_str}/{pci_value}/{freq_value}-R"
             df.iat[ii, idx_global] = nuevo_global
 
         # Intentar copiar GlobalCellId de filas siguientes con mismo PCI
@@ -374,7 +374,7 @@ def marcar_mejor_muestra(df: pd.DataFrame) -> pd.DataFrame:
     )
 
     idx_mejores = df.groupby("Punto de medida")["RSRP (dBm)"].idxmax()
-    df.loc[idx_mejores, "Exclusiones"] = "muestra conservada"
+    df.loc[idx_mejores, "Exclusiones"] = " "
 
     return df
 
@@ -433,8 +433,8 @@ def generar_resumen_rsrp(df: pd.DataFrame) -> pd.DataFrame:
 
     #df_validas = df_4g[df_4g["Exclusiones"] == "muestra conservada"].copy()
     df_validas = df_4g[
-        (df_4g["Exclusiones"] == "muestra conservada") &
-        (df_4g["dentro_2km"] == "si")
+        (df_4g["Exclusiones"] == " ") &
+        (df_4g["dentro_2km"] == " ")
     ].copy()
     total_validas = len(df_validas)
     buenas_validas = len(df_validas[df_validas["RSRP (dBm)"] >= -100])
@@ -552,6 +552,7 @@ def generar_radio_2km(CODIGO: str, LOCALIDAD: str):
         print(f"⚠ No existe el archivo de coordenadas: {archivo_coord}")
     
     return radio_m    
+    
 #==============================================================================================
 # KMZ de potencia (usando df ya filtrado y clasificado)
 #==============================================================================================
@@ -961,7 +962,7 @@ def generar_mapa_rsrp(
             plt.scatter(
                 df_c["Longitud"],
                 df_c["Latitud"],
-                s=15,
+                s=50,
                 c=color,
                 label=f"{label} → {count} muestras",
             )
@@ -979,6 +980,18 @@ def generar_mapa_rsrp(
     # Dibujar puntos específicos
     plt.scatter([lon0], [lat0], color="fuchsia", marker="o", s=80, label=nombre0)
     plt.scatter([lon1], [lat1], color="orange", marker="^", s=80, label=nombre1)
+    
+    # colocar el nombre en los puntos
+    plt.annotate(nombre0, (lon0, lat0), textcoords = "offset points",
+        xytext = (10,5),
+        ha = 'left',
+        va = 'bottom'
+    )
+    plt.annotate(nombre1, (lon1, lat1), textcoords = "offset points",
+        xytext = (10,5),
+        ha = 'left',
+        va = 'bottom'
+    )
 
     total = len(df_plot)
     plt.title(f"Mapa RSRP - {CODIGO} {LOCALIDAD}\nTotal muestras: {total}", fontsize=14)
@@ -1029,7 +1042,7 @@ def generar_mapa_rsrq(
             plt.scatter(
                 df_c["Longitud"],
                 df_c["Latitud"],
-                s=15,
+                s=50,
                 c=color,
                 label=f"{label} → {count} muestras",
             )
@@ -1045,7 +1058,19 @@ def generar_mapa_rsrq(
     # Dibujar puntos específicos
     plt.scatter([lon0], [lat0], color="fuchsia", marker="o", s=80, label=nombre0)
     plt.scatter([lon1], [lat1], color="orange", marker="^", s=80, label=nombre1)
-
+    
+    # colocar el nombre en los puntos
+    plt.annotate(nombre0, (lon0, lat0), textcoords = "offset points",
+        xytext = (10,5),
+        ha = 'left',
+        va = 'bottom'
+    )
+    plt.annotate(nombre1, (lon1, lat1), textcoords = "offset points",
+        xytext = (10,5),
+        ha = 'left',
+        va = 'bottom'
+    )
+    
     total = len(df_plot)
     plt.title(f"Mapa RSRQ - {CODIGO} {LOCALIDAD}\nTotal muestras: {total}", fontsize=14)
 
@@ -1100,7 +1125,7 @@ def generar_mapa_banda(
         plt.scatter(
             df_b["Longitud"],
             df_b["Latitud"],
-            s=15,
+            s=50,
             c=color,
             label=f"{banda} → {n} muestras"
         )
@@ -1116,7 +1141,19 @@ def generar_mapa_banda(
     # Dibujar puntos específicos
     plt.scatter([lon0], [lat0], color="fuchsia", marker="o", s=80, label=nombre0)
     plt.scatter([lon1], [lat1], color="orange", marker="^", s=80, label=nombre1)
-
+    
+    # colocar el nombre en los puntos
+    plt.annotate(nombre0, (lon0, lat0), textcoords = "offset points",
+        xytext = (10,5),
+        ha = 'left',
+        va = 'bottom'
+    )
+    plt.annotate(nombre1, (lon1, lat1), textcoords = "offset points",
+        xytext = (10,5),
+        ha = 'left',
+        va = 'bottom'
+    )
+    
     total = len(df_banda)
     plt.title(f"Mapa por Banda (MHz) - {CODIGO} {LOCALIDAD}\nTotal muestras: {total}", fontsize=14)
 
@@ -1166,7 +1203,7 @@ def generar_mapa_mnc(
         plt.scatter(
             df_b["Longitud"],
             df_b["Latitud"],
-            s=15,
+            s=50,
             c=color,
             label=f"{mnc} → {n} muestras"
         )
@@ -1182,7 +1219,19 @@ def generar_mapa_mnc(
     # Dibujar puntos específicos
     plt.scatter([lon0], [lat0], color="fuchsia", marker="o", s=80, label=nombre0)
     plt.scatter([lon1], [lat1], color="orange", marker="^", s=80, label=nombre1)
-
+    
+    # colocar el nombre en los puntos
+    plt.annotate(nombre0, (lon0, lat0), textcoords = "offset points",
+        xytext = (10,5),
+        ha = 'left',
+        va = 'bottom'
+    )
+    plt.annotate(nombre1, (lon1, lat1), textcoords = "offset points",
+        xytext = (10,5),
+        ha = 'left',
+        va = 'bottom'
+    )
+    
     total = len(df_mnc)
     plt.title(f"Mapa por MCC-MNC - {CODIGO} {LOCALIDAD}\nTotal muestras: {total}", fontsize=14)
 
@@ -1245,7 +1294,7 @@ def generar_mapa_globalcellpci(
         plt.scatter(
             df_c["Longitud"],
             df_c["Latitud"],
-            s=15,
+            s=50,
             c=color,
             label=label
         )
@@ -1261,7 +1310,23 @@ def generar_mapa_globalcellpci(
     # Dibujar puntos específicos
     plt.scatter([lon0], [lat0], color="fuchsia", marker="o", s=80, label=nombre0)
     plt.scatter([lon1], [lat1], color="orange", marker="^", s=80, label=nombre1)
-
+    
+    # colocar el nombre en los puntos
+    # coordenadas del PMCP
+    plt.annotate(nombre0, (lon0, lat0), textcoords = "offset points",
+        xytext = (10,5),
+        ha = 'left',
+        va = 'bottom',
+        fontsize=12
+    )
+    # Coordenadas de la estación
+    plt.annotate(nombre1, (lon1, lat1), textcoords = "offset points",
+        xytext = (10,5),
+        ha = 'left',
+        va = 'bottom',
+        fontsize=12
+    )
+    
     total = len(df_gc)
     plt.title(
         f"Mapa Global CellId /PCI (top 5 + Otros) - {CODIGO} {LOCALIDAD}\nTotal muestras: {total}",
@@ -1441,7 +1506,7 @@ def main():
     
     df_procesar["dist_m"] = distancia_haversine(df_procesar["Latitud"], df_procesar["Longitud"], lat0, lon0)
 
-    df_procesar["dentro_2km"] = np.where(df_procesar["dist_m"] <= 2000, "si", "Por fuera del área")
+    df_procesar["dentro_2km"] = np.where(df_procesar["dist_m"] <= 2000, " ", "Por fuera del área")
 
     resumen = generar_resumen_rsrp(df_procesar)
     archivo_salida = carpeta_local / f"{CODIGO} {LOCALIDAD} UT_procesar.xlsx"
@@ -1452,8 +1517,8 @@ def main():
     # 4. KMZ y mapa (solo muestras conservadas)
     #df_conservada = df_procesar[df_procesar["Exclusiones"] == "muestra conservada"].copy()
     df_conservada = df_procesar[
-        (df_procesar["Exclusiones"] == "muestra conservada") &
-        (df_procesar["dentro_2km"] == "si")
+        (df_procesar["Exclusiones"] == " ") &
+        (df_procesar["dentro_2km"] == " ")
     ].copy()
     
     radio_m = generar_radio_2km(CODIGO, LOCALIDAD)
