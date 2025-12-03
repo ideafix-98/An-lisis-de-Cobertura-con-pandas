@@ -1001,10 +1001,10 @@ def generar_mapa_rsrp(
 
     # Dibujar puntos por color
     for color, label, count in [
-        ("red", "Rojo (-80 a -30 dBm)", count_red),
-        ("yellow", "Amarillo (-90 a -80 dBm)", count_yellow),
-        ("green", "Verde (-100 a -90 dBm)", count_green),
-        ("blue", "Azul (-150 a -100 dBm)", count_blue),
+        ("red", "(-80 a -30 dBm)", count_red),
+        ("yellow", "(-90 a -80 dBm)", count_yellow),
+        ("green", "(-100 a -90 dBm)", count_green),
+        ("blue", "(-150 a -100 dBm)", count_blue),
     ]:
         df_c = df_plot[df_plot["color_rsrp"] == color]
         if not df_c.empty:
@@ -1081,10 +1081,10 @@ def generar_mapa_rsrq(
 
     # Dibujar puntos por color
     for color, label, count in [
-        ("red", "Rojo (-10 a -0 dBm)", count_red),
-        ("yellow", "Amarillo (-15 a -10.001 dBm)", count_yellow),
-        ("green", "Verde (-20 a -15.001 dBm)", count_green),
-        ("blue", "Azul (-40 a -20.001 dBm)", count_blue),
+        ("red", "(-10 a -0 dBm)", count_red),
+        ("yellow", "(-15 a -10.001 dBm)", count_yellow),
+        ("green", "(-20 a -15.001 dBm)", count_green),
+        ("blue", "(-40 a -20.001 dBm)", count_blue),
     ]:
         df_c = df_plot[df_plot["color_rsrq"] == color]
         if not df_c.empty:
