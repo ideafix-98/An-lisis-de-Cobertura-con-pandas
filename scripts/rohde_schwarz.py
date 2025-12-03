@@ -248,6 +248,7 @@ def renombrar_columnas(df: pd.DataFrame) -> pd.DataFrame:
     return df.rename(columns={
         "Latitude": "Latitud",
         "Longitude": "Longitud",
+        "Date": "Fecha/hora"
     })
 
 #==============================================================================================
@@ -439,32 +440,38 @@ def generar_resumen_rsrp(df: pd.DataFrame) -> pd.DataFrame:
     total_validas = len(df_validas)
     buenas_validas = len(df_validas[df_validas["RSRP (dBm)"] >= -100])
     malas_validas = len(df_validas[df_validas["RSRP (dBm)"] < -100])
-
+    
+    muestras_excluidas = total_muestras_4g - total_validas
     resumen = pd.DataFrame({
         "Descripción": [
             "Muestras 4G",
             "RSRP ≥ -100 dBm",
             "RSRP < -100 dBm",
+            "Muestras excluidas"
         ],
         "Total Muestras": [
             total_muestras_4g,
             buenas_4g,
             malas_4g,
+            muestras_excluidas
         ],
         "Porcentaje (%)": [
             "100.00%" if total_muestras_4g > 0 else "0.00%",
             f"{(buenas_4g / total_muestras_4g) * 100:.2f}%" if total_muestras_4g > 0 else "0.00%",
             f"{(malas_4g / total_muestras_4g) * 100:.2f}%" if total_muestras_4g > 0 else "0.00%",
+            " "
         ],
         "Muestras válidas Radio 2Km desde PMCP": [
             total_validas,
             buenas_validas,
             malas_validas,
+            " "
         ],
         "% muestras válidas 4G": [
             "100.00%" if total_validas > 0 else "0.00%",
             f"{(buenas_validas / total_validas) * 100:.2f}%" if total_validas > 0 else "0.00%",
             f"{(malas_validas / total_validas) * 100:.2f}%" if total_validas > 0 else "0.00%",
+            " "
         ],
     })
 
@@ -964,7 +971,7 @@ def generar_mapa_rsrp(
                 df_c["Latitud"],
                 s=50,
                 c=color,
-                label=f"{label} → {count} muestras",
+                label=f"{label} → {count} muestras"
             )
 
     # Dibujar círculo alrededor de (lat0, lon0)
@@ -978,8 +985,10 @@ def generar_mapa_rsrp(
     plt.plot(circle_lon, circle_lat, color="magenta", linewidth=2)
 
     # Dibujar puntos específicos
-    plt.scatter([lon0], [lat0], color="fuchsia", marker="o", s=80, label=nombre0)
-    plt.scatter([lon1], [lat1], color="orange", marker="^", s=80, label=nombre1)
+    plt.scatter([lon0], [lat0], color="fuchsia", marker="o", s=80)
+    plt.scatter([lon1], [lat1], color="orange", marker="^", s=80)
+    #plt.scatter([lon0], [lat0], color="fuchsia", marker="o", s=80, label=nombre0)
+    #plt.scatter([lon1], [lat1], color="orange", marker="^", s=80, label=nombre1)
     
     # colocar el nombre en los puntos
     plt.annotate(nombre0, (lon0, lat0), textcoords = "offset points",
@@ -997,7 +1006,7 @@ def generar_mapa_rsrp(
     plt.title(f"Mapa RSRP - {CODIGO} {LOCALIDAD}\nTotal muestras: {total}", fontsize=14)
 
     plt.axis("off")
-    plt.legend(loc="upper right")
+    plt.legend(loc="upper right", fontsize = 14)
     plt.margins(0)
     plt.tight_layout()
 
@@ -1056,8 +1065,8 @@ def generar_mapa_rsrq(
     plt.plot(circle_lon, circle_lat, color="magenta", linewidth=2)
 
     # Dibujar puntos específicos
-    plt.scatter([lon0], [lat0], color="fuchsia", marker="o", s=80, label=nombre0)
-    plt.scatter([lon1], [lat1], color="orange", marker="^", s=80, label=nombre1)
+    plt.scatter([lon0], [lat0], color="fuchsia", marker="o", s=80)
+    plt.scatter([lon1], [lat1], color="orange", marker="^", s=80)
     
     # colocar el nombre en los puntos
     plt.annotate(nombre0, (lon0, lat0), textcoords = "offset points",
@@ -1075,7 +1084,8 @@ def generar_mapa_rsrq(
     plt.title(f"Mapa RSRQ - {CODIGO} {LOCALIDAD}\nTotal muestras: {total}", fontsize=14)
 
     plt.axis("off")
-    plt.legend(loc="upper right")
+    plt.legend(loc="upper right", fontsize = 14)
+    #plt.legend(loc="upper right")
     plt.margins(0)
     plt.tight_layout()
 
@@ -1139,8 +1149,8 @@ def generar_mapa_banda(
     plt.plot(circle_lon, circle_lat, color="magenta", linewidth=2)
 
     # Dibujar puntos específicos
-    plt.scatter([lon0], [lat0], color="fuchsia", marker="o", s=80, label=nombre0)
-    plt.scatter([lon1], [lat1], color="orange", marker="^", s=80, label=nombre1)
+    plt.scatter([lon0], [lat0], color="fuchsia", marker="o", s=80)
+    plt.scatter([lon1], [lat1], color="orange", marker="^", s=80)
     
     # colocar el nombre en los puntos
     plt.annotate(nombre0, (lon0, lat0), textcoords = "offset points",
@@ -1158,7 +1168,8 @@ def generar_mapa_banda(
     plt.title(f"Mapa por Banda (MHz) - {CODIGO} {LOCALIDAD}\nTotal muestras: {total}", fontsize=14)
 
     plt.axis("off")
-    plt.legend(loc="upper right")
+    plt.legend(loc="upper right", fontsize = 14)
+    #plt.legend(loc="upper right")
     plt.margins(0)
     plt.tight_layout()
 
@@ -1217,8 +1228,8 @@ def generar_mapa_mnc(
     plt.plot(circle_lon, circle_lat, color="magenta", linewidth=2)
 
     # Dibujar puntos específicos
-    plt.scatter([lon0], [lat0], color="fuchsia", marker="o", s=80, label=nombre0)
-    plt.scatter([lon1], [lat1], color="orange", marker="^", s=80, label=nombre1)
+    plt.scatter([lon0], [lat0], color="fuchsia", marker="o", s=80)
+    plt.scatter([lon1], [lat1], color="orange", marker="^", s=80)
     
     # colocar el nombre en los puntos
     plt.annotate(nombre0, (lon0, lat0), textcoords = "offset points",
@@ -1236,7 +1247,8 @@ def generar_mapa_mnc(
     plt.title(f"Mapa por MCC-MNC - {CODIGO} {LOCALIDAD}\nTotal muestras: {total}", fontsize=14)
 
     plt.axis("off")
-    plt.legend(loc="upper right")
+    plt.legend(loc="upper right", fontsize = 14)
+    #plt.legend(loc="upper right")
     plt.margins(0)
     plt.tight_layout()
 
@@ -1308,8 +1320,8 @@ def generar_mapa_globalcellpci(
     plt.plot(circle_lon, circle_lat, color="magenta", linewidth=2)
 
     # Dibujar puntos específicos
-    plt.scatter([lon0], [lat0], color="fuchsia", marker="o", s=80, label=nombre0)
-    plt.scatter([lon1], [lat1], color="orange", marker="^", s=80, label=nombre1)
+    plt.scatter([lon0], [lat0], color="fuchsia", marker="o", s=80)
+    plt.scatter([lon1], [lat1], color="orange", marker="^", s=80)
     
     # colocar el nombre en los puntos
     # coordenadas del PMCP
@@ -1334,7 +1346,8 @@ def generar_mapa_globalcellpci(
     )
 
     plt.axis("off")
-    plt.legend(loc="upper right")
+    plt.legend(loc="upper right", fontsize = 14)
+    #plt.legend(loc="upper right")
     plt.margins(0)
     plt.tight_layout()
 
@@ -1420,8 +1433,12 @@ def main():
 
     df_unidos = pd.concat(df_list, ignore_index=True)
 
-    # Eliminar filas sin coordenadas
+    # Eliminar filas sin coordenadas, quitar espacios, poner como flotantes
+    #df_unidos.columns = df_unidos.columns.str.strip()  
     df_unidos = df_unidos.dropna(subset=["Longitude", "Latitude"])
+    df_unidos["Latitude"] = pd.to_numeric(df_unidos["Latitude"], errors="coerce")
+    df_unidos["Longitude"] = pd.to_numeric(df_unidos["Longitude"], errors="coerce")
+
     df_unidos["Fila en log"] = df_unidos.index + 1
 
     carpeta_local = SALIDAS / f"{CODIGO} {LOCALIDAD}"
@@ -1434,7 +1451,7 @@ def main():
     df_validados = df_unidos.copy()
 
     df_validados = reconstruir_globalcellid(df_validados, TECNOLOGIA, tabla_mnc)
-    df_validados = obtener_fecha_hora(df_validados)
+    #df_validados = obtener_fecha_hora(df_validados)
     df_validados = renombrar_columnas(df_validados)
     df_validados = establecer_RSRP_RSRQ(df_validados)
 
