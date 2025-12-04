@@ -443,7 +443,7 @@ def generar_resumen_rsrp(df: pd.DataFrame) -> pd.DataFrame:
     
     muestras_excluidas = total_muestras_4g - total_validas
     resumen = pd.DataFrame({
-        "Descripción": [
+        "Niveles de señal RSRP Banda 700 MHz": [        #modificar
             "Muestras 4G",
             "RSRP ≥ -100 dBm",
             "RSRP < -100 dBm",
@@ -1041,10 +1041,10 @@ def generar_mapa_rsrq(
 
     # Dibujar puntos por color
     for color, label, count in [
-        ("red", "(-10 a -0 dBm)", count_red),
-        ("yellow", "(-15 a -10.001 dBm)", count_yellow),
-        ("green", "(-20 a -15.001 dBm)", count_green),
-        ("blue", "(-40 a -20.001 dBm)", count_blue),
+        ("red", "(-10 a -0 dB)", count_red),
+        ("yellow", "(-15 a -10.001 dB)", count_yellow),
+        ("green", "(-20 a -15.001 dB)", count_green),
+        ("blue", "(-40 a -20.001 dB)", count_blue),
     ]:
         df_c = df_plot[df_plot["color_rsrq"] == color]
         if not df_c.empty:
