@@ -483,9 +483,14 @@ def generar_resumen_rsrp(df: pd.DataFrame) -> pd.DataFrame:
     buenas_validas = len(df_validas[df_validas["RSRP (dBm)"] >= -100])
     malas_validas = len(df_validas[df_validas["RSRP (dBm)"] < -100])
     
+    # Obtener bandas de frecuencia para el resumen
+    for banda in df_4g["Banda (MHz)"].unique():
+        # Poner los nombres de las bandas en el resumen concadenados
+        bandas_str = ", ".join(sorted(df_4g["Banda (MHz)"].unique()))
+
     muestras_excluidas = total_muestras_4g - total_validas
     resumen = pd.DataFrame({
-        "Niveles de señal RSRP Banda 700 MHz": [
+        "Niveles de señal RSRP Banda {bandas_str}": [
             "Muestras 4G",
             "RSRP ≥ -100 dBm",
             "RSRP < -100 dBm",
@@ -797,8 +802,8 @@ def generar_kmz_mnc(df: pd.DataFrame, CODIGO: str, LOCALIDAD: str, MNC_SELECCION
 
     # Definir colores por mnc (KML usa Color.rgb(R,G,B,A))
     COLOR_MNC_KML = {
-        f"732{MNC_SELECCIONADOS[1]}": simplekml.Color.rgb(  0, 128,   0, 255),   # verde
         f"732{MNC_SELECCIONADOS[0]}": simplekml.Color.rgb(  0,   0, 255, 255),   # azul
+        f"732{MNC_SELECCIONADOS[1]}": simplekml.Color.rgb(  0, 128,   0, 255),   # verde
     }
 
     # Crear una carpeta por mnc detectada en los datos
