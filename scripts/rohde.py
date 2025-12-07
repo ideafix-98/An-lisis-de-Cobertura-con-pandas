@@ -10,16 +10,48 @@
 #==============================================================================================
 
 #==============================================================================================
-# Imports
+# Imports & Library Verification
 #==============================================================================================
 from pathlib import Path
-import pandas as pd
-import numpy as np
+import sys
+
+# Verify required libraries are available
+REQUIRED_LIBRARIES = {
+    "pandas": "pd",
+    "numpy": "np",
+    "simplekml": "simplekml",
+    "matplotlib": "matplotlib.pyplot",
+    "openpyxl": "openpyxl"
+}
+
+def verify_libraries():
+    """Check that all required libraries are installed."""
+    missing = []
+    for lib_name, import_alias in REQUIRED_LIBRARIES.items():
+        try:
+            __import__(lib_name)
+        except ImportError:
+            missing.append(lib_name)
+    
+    if missing:
+        print(f"❌ ERROR: Las siguientes librerías requeridas no están instaladas:")
+        for lib in missing:
+            print(f"  - {lib}")
+        print(f"\nInstale las librerías faltantes con:")
+        print(f"  pip install {' '.join(missing)}")
+        sys.exit(1)
+
+verify_libraries()
+
+import pandas as pd # type: ignore
+import numpy as np # type: ignore
 import math
-import simplekml
-import matplotlib.pyplot as plt
+import simplekml  # type: ignore
+import matplotlib.pyplot as plt # type: ignore
 import warnings
 import time
+from openpyxl import load_workbook  # type: ignore
+from openpyxl.styles import Border, Side, PatternFill, Alignment, Font  # type: ignore
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
@@ -183,17 +215,21 @@ def leer_y_preparar(ruta_csv: Path) -> pd.DataFrame | None:
 def reconstruir_globalcellid(df: pd.DataFrame, tech: str, tabla_mnc: pd.DataFrame,
                              max_ventana: int = 50) -> pd.DataFrame:
     """
-    Reconstruye GlobalCellId cuando está vacío, asignando MNC correcto según frecuencia,
-    y luego reusa el GlobalCellId de filas cercanas con mismo PCI.
+    Reconstruye GlobalCellId cuando está vacío, asignando MNC correcto según frecuencia.
     Formato: '{tech} 732/{MNC}/{Frequency}/R'
     """
     df = df.copy()
 
-    idx_global = df.columns.get_loc("GlobalCellId")
-    idx_pci = df.columns.get_loc("PCI")
-    idx_freq = df.columns.get_loc("Frequency [MHz]")
+    # Validar que las columnas requeridas existan
+    try:
+        idx_global = df.columns.get_loc("GlobalCellId")
+        idx_pci = df.columns.get_loc("PCI")
+        idx_freq = df.columns.get_loc("Frequency [MHz]")
+    except KeyError as e:
+        print(f"❌ Error: Columna requerida no encontrada: {e}")
+        return df
 
-    # Asegurar que la frecuencia sea numérica
+    # Convertir frecuencia a numérico
     df.iloc[:, idx_freq] = pd.to_numeric(df.iloc[:, idx_freq], errors="coerce")
 
     n = len(df)
@@ -218,7 +254,7 @@ def reconstruir_globalcellid(df: pd.DataFrame, tech: str, tabla_mnc: pd.DataFram
             nuevo_global = f"{tech} 732/{mnc_str}/{pci_value}/{freq_value}-R"
             df.iat[ii, idx_global] = nuevo_global
 
-        # Intentar copiar GlobalCellId de filas siguientes con mismo PCI
+        # Copiar GlobalCellId de filas siguientes con mismo PCI
         for jj in range(ii + 1, min(ii + 1 + max_ventana, n)):
             if df.iat[jj, idx_pci] == pci_value and pd.notna(df.iat[jj, idx_global]):
                 df.iat[ii, idx_global] = df.iat[jj, idx_global]
@@ -278,19 +314,30 @@ def establecer_RSRP_RSRQ(df: pd.DataFrame) -> pd.DataFrame:
 # Operaciones sobre GlobalCellId
 #==============================================================================================
 def extraer_tecnologia(globalcellid: str) -> str | None:
+    """Extrae la tecnología del GlobalCellId (ej: 'LTE', 'UMTS')."""
+    if pd.isna(globalcellid):
+        return None
     try:
         return str(globalcellid).split(" ")[0]
     except Exception:
         return None
 
+
 def extraer_mcc_mnc(globalcellid: str) -> str | None:
+    """Extrae el MCC-MNC del GlobalCellId."""
+    if pd.isna(globalcellid):
+        return None
     try:
         partes = str(globalcellid).split(" ")[1].split("/")
         return partes[0] + partes[1]
     except Exception:
         return None
 
+
 def extraer_globalcell_pci(globalcellid: str) -> str | None:
+    """Extrae el Global CellId y PCI del GlobalCellId."""
+    if pd.isna(globalcellid):
+        return None
     try:
         partes = str(globalcellid).split(" ")[1].split("/")
         return partes[2] + "/" + partes[3]
@@ -301,6 +348,7 @@ def extraer_globalcell_pci(globalcellid: str) -> str | None:
 # PRSTM (operador)
 #==============================================================================================
 def establecer_prstm(df: pd.DataFrame) -> pd.DataFrame:
+    """Asigna el operador (PRSTM) según el MCC-MNC."""
     df = df.copy()
     df["MCC-MNC"] = (
         df["MCC-MNC"].astype(str).str.replace(r"\D", "", regex=True)
@@ -370,11 +418,12 @@ def marcar_mejor_muestra(df: pd.DataFrame) -> pd.DataFrame:
     """
     df = df.copy()
 
-    df["Exclusiones"] = (
-        "muestra desechada por haber un mayor RSRP para UT en este punto"
-    )
+    df["Exclusiones"] = "muestra desechada por haber un mayor RSRP para UT en este punto"
 
+    # Vectorized groupby with idxmax - much faster than iterrows
     idx_mejores = df.groupby("Punto de medida")["RSRP (dBm)"].idxmax()
+
+    # Vectorized assignment
     df.loc[idx_mejores, "Exclusiones"] = " "
 
     return df
@@ -419,7 +468,7 @@ def clasificar_rsrq(df: pd.DataFrame) -> pd.DataFrame:
         (rsrq >= -40) & (rsrq < -20.001)
     ]
     colores = ["red", "yellow", "green", "blue"]
-    df["color_rsrq"] = np.select(condiciones, colores, default = None)
+    df["color_rsrq"] = np.select(condiciones, colores, default=None)
     return df
     
 #==============================================================================================
@@ -428,27 +477,29 @@ def clasificar_rsrq(df: pd.DataFrame) -> pd.DataFrame:
 def generar_resumen_rsrp(df: pd.DataFrame) -> pd.DataFrame:
     df_4g = df[df["Tecnología"] == "LTE"].copy()
 
+    # Vectorized operations for counting - much faster than len()
+    rsrp_col = df_4g["RSRP (dBm)"]
     total_muestras_4g = len(df_4g)
-    buenas_4g = len(df_4g[df_4g["RSRP (dBm)"] >= -100])
-    malas_4g = len(df_4g[df_4g["RSRP (dBm)"] < -100])
+    buenas_4g = (rsrp_col >= -100).sum()   # Vectorized
+    malas_4g = (rsrp_col < -100).sum()     # Vectorized
 
     #df_validas = df_4g[df_4g["Exclusiones"] == "muestra conservada"].copy()
-    df_validas = df_4g[
-        (df_4g["Exclusiones"] == " ") &
-        (df_4g["dentro_2km"] == " ")
-    ].copy()
+    valid_mask = (df_4g["Exclusiones"] == " ") & (df_4g["dentro_2km"] == " ")
+    df_validas = df_4g[valid_mask].copy()
     total_validas = len(df_validas)
-    buenas_validas = len(df_validas[df_validas["RSRP (dBm)"] >= -100])
+    buenas_validas = (df_validas["RSRP (dBm)"] >= -100).sum()  # Vectorized
     malas_validas = len(df_validas[df_validas["RSRP (dBm)"] < -100])
     
+    """
     # Obtener bandas de frecuencia para el resumen
     for banda in df_4g["Banda (MHz)"].unique():
         # Poner los nombres de las bandas en el resumen concadenados
-        bandas_str = ", ".join(sorted(df_4g["Banda (MHz)"].unique()))
-
+        bandas_str = ", ".join(sorted(df_4g["Banda (MHz)"].unique().astype(str)))
+    """
+    bandas_str = ", ".join(sorted(df_4g["Banda (MHz)"].unique().astype(str)))
     muestras_excluidas = total_muestras_4g - total_validas
     resumen = pd.DataFrame({
-        "Niveles de señal RSRP Banda {bandas_str}": [        #modificar
+        f"Niveles de señal RSRP Banda {bandas_str}": [        #modificar
             "Muestras 4G",
             "RSRP ≥ -100 dBm",
             "RSRP < -100 dBm",
@@ -483,17 +534,131 @@ def generar_resumen_rsrp(df: pd.DataFrame) -> pd.DataFrame:
     return resumen
 
 def exportar_excel_con_resumen(df: pd.DataFrame, resumen: pd.DataFrame, ruta_salida: Path):
+    """
+    Exporta datos y resumen a Excel con estilos profesionales:
+    - Bordes en todas las celdas
+    - Cabeceras con color azul claro (94, 171, 219)
+    - Filas de datos con fondo azul claro (#BDD7EE)
+    - Columnas de df_procesar con encabezados amarillos
+    - Ancho de columnas automático
+    """
     ruta_final = safe_save_generic(ruta_salida)
+    
+    # Escribir con xlsxwriter primero
     with pd.ExcelWriter(ruta_final, engine="xlsxwriter") as writer:
         df.to_excel(writer, sheet_name="Datos Procesados", index=False)
         resumen.to_excel(writer, sheet_name="Resumen RSRP", index=False)
-    print(f"✔ Excel con resumen guardado: {ruta_final}")
+    
+    # Ahora abrir con openpyxl para aplicar estilos
+    try:
+        from openpyxl.styles import Border, Side, PatternFill, Alignment, Font  # type: ignore
+        from openpyxl import load_workbook  # type: ignore
+        
+        wb = load_workbook(ruta_final)
+        
+        # Estilos comunes
+        thin_border = Border(
+            left=Side(style="thin"),
+            right=Side(style="thin"),
+            top=Side(style="thin"),
+            bottom=Side(style="thin")
+        )
+        
+        # Color azul claro para cabeceras: RGB(94, 171, 219)
+        header_fill = PatternFill(start_color="5EABDB", end_color="5EABDB", fill_type="solid")
+        header_font = Font(bold=True, color="FFFFFF")
+        
+        # Color azul claro para celdas de datos: #BDD7EE
+        data_fill = PatternFill(start_color="BDD7EE", end_color="BDD7EE", fill_type="solid")
+        
+        center_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        
+        # ════════════════════════════════════════════════════════════════════════════
+        # Aplicar estilos a hoja "Resumen RSRP"
+        # ════════════════════════════════════════════════════════════════════════════
+        ws_resumen = wb["Resumen RSRP"]
+        
+        # Aplicar bordes y formato a todas las celdas con datos
+        for row in ws_resumen.iter_rows(min_row=1, max_row=ws_resumen.max_row,
+                                        min_col=1, max_col=ws_resumen.max_column):
+            for cell in row:
+                cell.border = thin_border
+                cell.alignment = center_align
+                
+                # Cabecera (primera fila)
+                if cell.row == 1:
+                    cell.fill = header_fill
+                    cell.font = header_font
+                else:
+                    # Aplicar color de fondo a todas las filas de datos
+                    cell.fill = data_fill
+        
+        # Ajustar ancho de columnas automáticamente
+        for col in ws_resumen.columns:
+            max_length = 0
+            col_letter = col[0].column_letter
+            for cell in col:
+                try:
+                    if cell.value:
+                        max_length = max(max_length, len(str(cell.value)))
+                except:
+                    pass
+            adjusted_width = min(max_length + 3, 50)  # Máximo 50 caracteres
+            ws_resumen.column_dimensions[col_letter].width = adjusted_width
+        
+        # Establecer altura de fila para cabecera
+        ws_resumen.row_dimensions[1].height = 30
+        
+        # ════════════════════════════════════════════════════════════════════════════
+        # Aplicar estilos a hoja "Datos Procesados" - encabezados amarillos
+        # ════════════════════════════════════════════════════════════════════════════
+        ws_datos = wb["Datos Procesados"]
+        
+        # Color amarillo para encabezados de datos
+        yellow_fill = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
+        yellow_font = Font(bold=True, color="000000")
+        
+        # Aplicar estilos a la fila de encabezados (primera fila)
+        for cell in ws_datos[1]:
+            cell.border = thin_border
+            cell.fill = yellow_fill
+            cell.font = yellow_font
+            cell.alignment = center_align
+        
+        # Aplicar bordes a todas las otras celdas
+        for row in ws_datos.iter_rows(min_row=2, max_row=ws_datos.max_row,
+                                       min_col=1, max_col=ws_datos.max_column):
+            for cell in row:
+                cell.border = thin_border
+        
+        # Ajustar ancho de columnas automáticamente
+        for col in ws_datos.columns:
+            max_length = 0
+            col_letter = col[0].column_letter
+            for cell in col:
+                try:
+                    if cell.value:
+                        max_length = max(max_length, len(str(cell.value)))
+                except:
+                    pass
+            adjusted_width = min(max_length + 2, 40)  # Máximo 40 caracteres
+            ws_datos.column_dimensions[col_letter].width = adjusted_width
+        
+        # Establecer altura de fila para cabecera
+        ws_datos.row_dimensions[1].height = 30
+        
+        wb.save(ruta_final)
+        print(f"✔ Excel con resumen guardado: {ruta_final}")
+        
+    except ImportError:
+        print(f"⚠ Advertencia: openpyxl no disponible. Excel guardado sin estilos avanzados.")
+        print(f"  Instale openpyxl con: pip install openpyxl")
     
 #==============================================================================================
 # KMZ radio 2km
 #==============================================================================================
 def generar_radio_2km(CODIGO: str, LOCALIDAD: str):
-    kml = simplekml.Kml()  # <-- faltaba
+    kml = simplekml.Kml()
 
     archivo_coord = DATOS / "coordenadas_origen.txt"
 
@@ -549,7 +714,9 @@ def generar_radio_2km(CODIGO: str, LOCALIDAD: str):
             ICON22 = "http://maps.google.com/mapfiles/kml/shapes/donut.png"
             for nombre, lat, lon in puntos:
                 p = folder_circulo.newpoint(name=nombre, coords=[(lon, lat)])
+                p.style.labelstyle.color = simplekml.Color.orange
                 p.style.iconstyle.color = simplekml.Color.hex("ff00ff")
+                #p.style.iconstyle.label = simplekml.Color.hex("#eb7734")
                 p.style.iconstyle.icon.href = ICON22
                 p.style.iconstyle.scale = 1.2
 
@@ -744,7 +911,7 @@ def generar_kmz_banda(df: pd.DataFrame, CODIGO: str, LOCALIDAD: str):
 #==============================================================================================
 # KMZ de MNC
 #==============================================================================================
-def generar_kmz_mnc(df: pd.DataFrame, CODIGO: str, LOCALIDAD: str, MNC_SELECCIONADOS: str):
+def generar_kmz_mnc(df: pd.DataFrame, CODIGO: str, LOCALIDAD: str, MNC_SELECCIONADOS: list):
     SALIDAS.mkdir(parents=True, exist_ok=True)
 
     # Filtrar filas que sí tienen banda
@@ -759,10 +926,17 @@ def generar_kmz_mnc(df: pd.DataFrame, CODIGO: str, LOCALIDAD: str, MNC_SELECCION
     ICON_URL = "http://maps.google.com/mapfiles/kml/shapes/shaded_dot.png"
 
     # Definir colores por mnc (KML usa Color.rgb(R,G,B,A))
-    COLOR_MNC_KML = {
-        f"732{MNC_SELECCIONADOS[0]}": simplekml.Color.rgb(  0,   0, 255, 255),   # azul
-        f"732{MNC_SELECCIONADOS[1]}": simplekml.Color.rgb(  0, 128,   0, 255),   # verde
-    }
+    # Convertir lista de MNC a diccionario de colores
+    COLOR_MNC_KML = {}
+    colores_disponibles = [
+        simplekml.Color.rgb(  0,   0, 255, 255),   # azul
+        simplekml.Color.rgb(  0, 128,   0, 255),   # verde
+        simplekml.Color.rgb(255,   0,   0, 255),   # rojo
+        simplekml.Color.rgb(255, 165,   0, 255),   # naranja
+    ]
+    for i, mnc in enumerate(MNC_SELECCIONADOS):
+        color = colores_disponibles[i % len(colores_disponibles)]
+        COLOR_MNC_KML[f"732{mnc}"] = color
 
     # Crear una carpeta por mnc detectada en los datos
     carpetas_por_mnc = {}
@@ -941,6 +1115,7 @@ def generar_mapa_rsrp(df_conservada: pd.DataFrame, CODIGO: str, LOCALIDAD: str):
     plt.savefig(str(ruta_png), dpi=300, bbox_inches="tight", pad_inches=0)
     plt.close()
  """  
+
 def generar_mapa_rsrp(
     df_conservada: pd.DataFrame, 
     CODIGO: str, 
@@ -963,26 +1138,32 @@ def generar_mapa_rsrp(
     plt.figure(figsize=(10, 10))
 
     # Dibujar puntos por color
+    handles = []
     for color, label, count in [
-        ("red", "(-80 a -30 dBm)", count_red),
-        ("yellow", "(-90 a -80 dBm)", count_yellow),
-        ("green", "(-100 a -90 dBm)", count_green),
-        ("blue", "(-150 a -100 dBm)", count_blue),
+        ("red", "(-30 a -80 dBm)", count_red),
+        ("yellow", "(-80 a -90 dBm)", count_yellow),
+        ("green", "(-90 a -100 dBm)", count_green),
+        ("blue", "(-100 a -150 dBm)", count_blue),
     ]:
         df_c = df_plot[df_plot["color_rsrp"] == color]
         if not df_c.empty:
-            plt.scatter(
+            scatter = plt.scatter(
                 df_c["Longitud"],
                 df_c["Latitud"],
                 s=50,
                 c=color,
                 label=f"{label} → {count} muestras"
             )
+            handles.append(scatter)
 
     # Dibujar círculo alrededor de (lat0, lon0)
     # Aproximación: 1 grado lat ≈ 111 km, 1 grado lon ≈ 111 km * cos(lat)
     lat_radius = radio_m / 111000
-    lon_radius = radio_m / (111000 * np.cos(np.radians(lat0)))
+    # Evitar división por cero cerca de los polos
+    cos_lat = np.cos(np.radians(lat0))
+    if abs(cos_lat) < 0.001:
+        cos_lat = 0.001
+    lon_radius = radio_m / (111000 * cos_lat)
 
     theta = np.linspace(0, 2 * np.pi, 360)
     circle_lat = lat0 + lat_radius * np.sin(theta)
@@ -990,28 +1171,25 @@ def generar_mapa_rsrp(
     plt.plot(circle_lon, circle_lat, color="magenta", linewidth=2)
 
     # Dibujar puntos específicos
-    plt.scatter([lon0], [lat0], color="fuchsia", marker="o", s=80)
-    plt.scatter([lon1], [lat1], color="orange", marker="^", s=80)
-    #plt.scatter([lon0], [lat0], color="fuchsia", marker="o", s=80, label=nombre0)
-    #plt.scatter([lon1], [lat1], color="orange", marker="^", s=80, label=nombre1)
+    plt.scatter([lon0], [lat0], color="black", marker="^", s=80)
+    plt.scatter([lon1], [lat1], color="black", marker="^", s=80)
     
-    # colocar el nombre en los puntos
-    plt.annotate(nombre0, (lon0, lat0), textcoords = "offset points",
-        xytext = (10,5),
-        ha = 'left',
-        va = 'bottom'
-    )
-    plt.annotate(nombre1, (lon1, lat1), textcoords = "offset points",
-        xytext = (10,5),
-        ha = 'left',
-        va = 'bottom'
-    )
+    # Colocar el nombre en los puntos
+    plt.annotate(nombre0, (lon0, lat0), textcoords="offset points",
+                 xytext=(-15, -15), ha='right', va='top',
+                 fontsize=10, fontweight='bold', color='white',
+                 bbox=dict(boxstyle='round,pad=0.2', facecolor='black', edgecolor='yellow', linewidth=1.5, alpha=0.8))
+    plt.annotate(nombre1, (lon1, lat1), textcoords="offset points",
+                 xytext=(15, 15), ha='left', va='bottom',
+                 fontsize=10, fontweight='bold', color='white',
+                 bbox=dict(boxstyle='round,pad=0.2', facecolor='black', edgecolor='yellow', linewidth=1.5, alpha=0.8))
 
     total = len(df_plot)
     plt.title(f"Mapa RSRP - {CODIGO} {LOCALIDAD}\nTotal muestras: {total}", fontsize=14)
 
+    # Modificar leyenda
     plt.axis("off")
-    plt.legend(loc="upper right", fontsize = 14)
+    plt.legend(handles=handles, loc="upper right", fontsize=14, markerscale=2)  # Cambiar markerscale para aumentar tamaño de los puntos
     plt.margins(0)
     plt.tight_layout()
 
@@ -1019,6 +1197,7 @@ def generar_mapa_rsrp(
     ruta_png = safe_save_generic(ruta_png)
     plt.savefig(str(ruta_png), dpi=300, bbox_inches="tight", pad_inches=0)
     plt.close()
+
     
 #==============================================================================================
 # Mapa RSRQ con matplotlib
@@ -1029,7 +1208,7 @@ def generar_mapa_rsrq(
     LOCALIDAD: str, 
     lat0: float, lon0: float, nombre0: str,   # primer punto
     lat1: float, lon1: float, nombre1: str,  # segundo punto
-    radio_m: float = 2000
+    radio_m: float = 2000       # radio en metros
 ):
     SALIDAS.mkdir(parents=True, exist_ok=True)
 
@@ -1045,52 +1224,56 @@ def generar_mapa_rsrq(
     plt.figure(figsize=(10, 10))
 
     # Dibujar puntos por color
+    handles = []  # Para personalizar la leyenda
     for color, label, count in [
-        ("red", "(-10 a -0 dB)", count_red),
-        ("yellow", "(-15 a -10.001 dB)", count_yellow),
-        ("green", "(-20 a -15.001 dB)", count_green),
-        ("blue", "(-40 a -20.001 dB)", count_blue),
+        ("red", "(0 a -10 dB)", count_red),
+        ("yellow", "(-10.001 a -15 dB)", count_yellow),
+        ("green", "(-15.001 a -20 dB)", count_green),
+        ("blue", "(-20.001 a -40 dB)", count_blue),
     ]:
         df_c = df_plot[df_plot["color_rsrq"] == color]
         if not df_c.empty:
-            plt.scatter(
+            scatter = plt.scatter(
                 df_c["Longitud"],
                 df_c["Latitud"],
                 s=50,
                 c=color,
-                label=f"{label} → {count} muestras",
+                label=f"{label} → {count} muestras"
             )
+            handles.append(scatter)
 
-    # Dibujar círculo
+    # Dibujar círculo alrededor de (lat0, lon0)
     lat_radius = radio_m / 111000
-    lon_radius = radio_m / (111000 * np.cos(np.radians(lat0)))
+    # Evitar división por cero cerca de los polos
+    cos_lat = np.cos(np.radians(lat0))
+    if abs(cos_lat) < 0.001:
+        cos_lat = 0.001
+    lon_radius = radio_m / (111000 * cos_lat)
     theta = np.linspace(0, 2 * np.pi, 360)
     circle_lat = lat0 + lat_radius * np.sin(theta)
     circle_lon = lon0 + lon_radius * np.cos(theta)
     plt.plot(circle_lon, circle_lat, color="magenta", linewidth=2)
 
     # Dibujar puntos específicos
-    plt.scatter([lon0], [lat0], color="fuchsia", marker="o", s=80)
-    plt.scatter([lon1], [lat1], color="orange", marker="^", s=80)
+    plt.scatter([lon0], [lat0], color="black", marker="^", s=80)
+    plt.scatter([lon1], [lat1], color="black", marker="^", s=80)
     
-    # colocar el nombre en los puntos
-    plt.annotate(nombre0, (lon0, lat0), textcoords = "offset points",
-        xytext = (10,5),
-        ha = 'left',
-        va = 'bottom'
-    )
-    plt.annotate(nombre1, (lon1, lat1), textcoords = "offset points",
-        xytext = (10,5),
-        ha = 'left',
-        va = 'bottom'
-    )
-    
+    # Colocar el nombre en los puntos
+    plt.annotate(nombre0, (lon0, lat0), textcoords="offset points",
+                 xytext=(-15, -15), ha='right', va='top',
+                 fontsize=10, fontweight='bold', color='white',
+                 bbox=dict(boxstyle='round,pad=0.2', facecolor='black', edgecolor='yellow', linewidth=1.5, alpha=0.8))
+    plt.annotate(nombre1, (lon1, lat1), textcoords="offset points",
+                 xytext=(15, 15), ha='left', va='bottom',
+                 fontsize=10, fontweight='bold', color='white',
+                 bbox=dict(boxstyle='round,pad=0.2', facecolor='black', edgecolor='yellow', linewidth=1.5, alpha=0.8))
+
     total = len(df_plot)
     plt.title(f"Mapa RSRQ - {CODIGO} {LOCALIDAD}\nTotal muestras: {total}", fontsize=14)
 
+    # Modificar leyenda para aumentar tamaño de los puntos
     plt.axis("off")
-    plt.legend(loc="upper right", fontsize = 14)
-    #plt.legend(loc="upper right")
+    plt.legend(handles=handles, loc="upper right", fontsize=14, markerscale=2)  # Cambiar markerscale para aumentar el tamaño de los puntos
     plt.margins(0)
     plt.tight_layout()
 
@@ -1133,17 +1316,19 @@ def generar_mapa_banda(
 
     plt.figure(figsize=(10, 10))
 
+    handles = []
     for banda in sorted(df_banda["Banda (MHz)"].unique()):
         df_b = df_banda[df_banda["Banda (MHz)"] == banda]
         color = COLOR_BANDA_PLOT.get(banda, "#808080")
         n = conteo.get(banda, 0)
-        plt.scatter(
+        scatter = plt.scatter(
             df_b["Longitud"],
             df_b["Latitud"],
             s=50,
             c=color,
             label=f"{banda} → {n} muestras"
         )
+        handles.append(scatter)
 
     # Dibujar círculo
     lat_radius = radio_m / 111000
@@ -1154,34 +1339,38 @@ def generar_mapa_banda(
     plt.plot(circle_lon, circle_lat, color="magenta", linewidth=2)
 
     # Dibujar puntos específicos
-    plt.scatter([lon0], [lat0], color="fuchsia", marker="o", s=80)
-    plt.scatter([lon1], [lat1], color="orange", marker="^", s=80)
+    plt.scatter([lon0], [lat0], color="black", marker="^", s=80)
+    plt.scatter([lon1], [lat1], color="black", marker="^", s=80)
     
     # colocar el nombre en los puntos
     plt.annotate(nombre0, (lon0, lat0), textcoords = "offset points",
-        xytext = (10,5),
-        ha = 'left',
-        va = 'bottom'
+        xytext = (-15, -15),
+        ha = 'right',
+        va = 'top',
+        fontsize=10, fontweight='bold', color='white',
+        bbox=dict(boxstyle='round,pad=0.2', facecolor='black', edgecolor='yellow', linewidth=1.5, alpha=0.8)
     )
     plt.annotate(nombre1, (lon1, lat1), textcoords = "offset points",
-        xytext = (10,5),
+        xytext = (15, 15),
         ha = 'left',
-        va = 'bottom'
+        va = 'bottom',
+        fontsize=10, fontweight='bold', color='white',
+        bbox=dict(boxstyle='round,pad=0.2', facecolor='black', edgecolor='yellow', linewidth=1.5, alpha=0.8)
     )
     
     total = len(df_banda)
     plt.title(f"Mapa por Banda (MHz) - {CODIGO} {LOCALIDAD}\nTotal muestras: {total}", fontsize=14)
 
     plt.axis("off")
-    plt.legend(loc="upper right", fontsize = 14)
-    #plt.legend(loc="upper right")
+    plt.legend(handles=handles, loc="upper right", fontsize=14, markerscale=2)  # Ajuste del tamaño de los puntos en la leyenda
     plt.margins(0)
     plt.tight_layout()
 
     ruta_png = SALIDAS / f"{CODIGO} {LOCALIDAD}" / f"{CODIGO} {LOCALIDAD} Bandas.png"
     ruta_png = safe_save_generic(ruta_png)
-    plt.savefig(str(ruta_png), dpi=300, bbox_inches=0, pad_inches=0)
+    plt.savefig(str(ruta_png), dpi=300, bbox_inches="tight", pad_inches=0)
     plt.close()
+
     
 #==============================================================================================
 # Mapa MCC-MNC con matplotlib
@@ -1190,7 +1379,7 @@ def generar_mapa_mnc(
     df: pd.DataFrame, 
     CODIGO: str, 
     LOCALIDAD: str, 
-    MNC_SELECCIONADOS: str,
+    MNC_SELECCIONADOS: list,
     lat0: float, lon0: float, nombre0: str,
     lat1: float, lon1: float, nombre1: str,
     radio_m: float = 2000
@@ -1203,26 +1392,31 @@ def generar_mapa_mnc(
         print("⚠ No hay datos con 'MCC-MNC' para generar el mapa de mnc.")
         return
 
-    COLOR_MNC_PLOT = { 
-        f"732{MNC_SELECCIONADOS[1]}": "#008000",  # verde
-        f"732{MNC_SELECCIONADOS[0]}": "#0000FF"   # azul
-    }
+    # Colores para diferentes MNCs
+    #colores_disponibles = ["#008000", "#0000FF", "#FF0000", "#FFA500"]
+    colores_disponibles = ["#0000FF", "#008000", "#FF0000", "#FFA500"]
+    COLOR_MNC_PLOT = {}
+    for i, mnc in enumerate(MNC_SELECCIONADOS):
+        color = colores_disponibles[i % len(colores_disponibles)]
+        COLOR_MNC_PLOT[f"732{mnc}"] = color
 
     conteo = df_mnc["MCC-MNC"].value_counts().to_dict()
 
     plt.figure(figsize=(10, 10))
 
+    handles = []
     for mnc in sorted(df_mnc["MCC-MNC"].unique()):
         df_b = df_mnc[df_mnc["MCC-MNC"] == mnc]
         color = COLOR_MNC_PLOT.get(mnc, "#808080")
         n = conteo.get(mnc, 0)
-        plt.scatter(
+        scatter = plt.scatter(
             df_b["Longitud"],
             df_b["Latitud"],
             s=50,
             c=color,
             label=f"{mnc} → {n} muestras"
         )
+        handles.append(scatter)
 
     # Dibujar círculo
     lat_radius = radio_m / 111000
@@ -1233,33 +1427,36 @@ def generar_mapa_mnc(
     plt.plot(circle_lon, circle_lat, color="magenta", linewidth=2)
 
     # Dibujar puntos específicos
-    plt.scatter([lon0], [lat0], color="fuchsia", marker="o", s=80)
-    plt.scatter([lon1], [lat1], color="orange", marker="^", s=80)
+    plt.scatter([lon0], [lat0], color="black", marker="^", s=80)
+    plt.scatter([lon1], [lat1], color="black", marker="^", s=80)
     
     # colocar el nombre en los puntos
     plt.annotate(nombre0, (lon0, lat0), textcoords = "offset points",
-        xytext = (10,5),
-        ha = 'left',
-        va = 'bottom'
+        xytext = (-15, -15),
+        ha = 'right',
+        va = 'top',
+        fontsize=10, fontweight='bold', color='white',
+        bbox=dict(boxstyle='round,pad=0.2', facecolor='black', edgecolor='yellow', linewidth=1.5, alpha=0.8)
     )
     plt.annotate(nombre1, (lon1, lat1), textcoords = "offset points",
-        xytext = (10,5),
+        xytext = (15, 15),
         ha = 'left',
-        va = 'bottom'
+        va = 'bottom',
+        fontsize=10, fontweight='bold', color='white',
+        bbox=dict(boxstyle='round,pad=0.2', facecolor='black', edgecolor='yellow', linewidth=1.5, alpha=0.8)
     )
     
     total = len(df_mnc)
     plt.title(f"Mapa por MCC-MNC - {CODIGO} {LOCALIDAD}\nTotal muestras: {total}", fontsize=14)
 
     plt.axis("off")
-    plt.legend(loc="upper right", fontsize = 14)
-    #plt.legend(loc="upper right")
+    plt.legend(handles=handles, loc="upper right", fontsize=14, markerscale=2)  # Ajuste del tamaño de los puntos en la leyenda
     plt.margins(0)
     plt.tight_layout()
 
     ruta_png = SALIDAS / f"{CODIGO} {LOCALIDAD}" / f"{CODIGO} {LOCALIDAD} MNC.png"
     ruta_png = safe_save_generic(ruta_png)
-    plt.savefig(str(ruta_png), dpi=300, bbox_inches=0, pad_inches=0)
+    plt.savefig(str(ruta_png), dpi=300, bbox_inches="tight", pad_inches=0)
     plt.close()
 
 #==============================================================================================
@@ -1302,46 +1499,52 @@ def generar_mapa_globalcellpci(
 
     plt.figure(figsize=(10, 10))
 
+    handles = []
     for cat in conteo_cat.keys():
         df_c = df_gc[df_gc["GCID_cat"] == cat]
         color = COLOR_CAT.get(cat, "#808080")
         n = conteo_cat[cat]
         label = f"{cat} → {n} muestras" if cat != "Otros" else f"Otros → {n} muestras"
 
-        plt.scatter(
+        scatter = plt.scatter(
             df_c["Longitud"],
             df_c["Latitud"],
             s=50,
             c=color,
             label=label
         )
+        handles.append(scatter)
 
     # Dibujar círculo
     lat_radius = radio_m / 111000
-    lon_radius = radio_m / (111000 * np.cos(np.radians(lat0)))
+    # Evitar división por cero cerca de los polos
+    cos_lat = np.cos(np.radians(lat0))
+    if abs(cos_lat) < 0.001:
+        cos_lat = 0.001
+    lon_radius = radio_m / (111000 * cos_lat)
     theta = np.linspace(0, 2 * np.pi, 360)
     circle_lat = lat0 + lat_radius * np.sin(theta)
     circle_lon = lon0 + lon_radius * np.cos(theta)
     plt.plot(circle_lon, circle_lat, color="magenta", linewidth=2)
 
     # Dibujar puntos específicos
-    plt.scatter([lon0], [lat0], color="fuchsia", marker="o", s=80)
-    plt.scatter([lon1], [lat1], color="orange", marker="^", s=80)
+    plt.scatter([lon0], [lat0], color="black", marker="^", s=80)
+    plt.scatter([lon1], [lat1], color="black", marker="^", s=80)
     
     # colocar el nombre en los puntos
-    # coordenadas del PMCP
     plt.annotate(nombre0, (lon0, lat0), textcoords = "offset points",
-        xytext = (10,5),
-        ha = 'left',
-        va = 'bottom',
-        fontsize=12
+        xytext = (-15, -15),
+        ha = 'right',
+        va = 'top',
+        fontsize=10, fontweight='bold', color='white',
+        bbox=dict(boxstyle='round,pad=0.2', facecolor='black', edgecolor='yellow', linewidth=1.5, alpha=0.8)
     )
-    # Coordenadas de la estación
     plt.annotate(nombre1, (lon1, lat1), textcoords = "offset points",
-        xytext = (10,5),
+        xytext = (15, 15),
         ha = 'left',
         va = 'bottom',
-        fontsize=12
+        fontsize=10, fontweight='bold', color='white',
+        bbox=dict(boxstyle='round,pad=0.2', facecolor='black', edgecolor='yellow', linewidth=1.5, alpha=0.8)
     )
     
     total = len(df_gc)
@@ -1351,8 +1554,7 @@ def generar_mapa_globalcellpci(
     )
 
     plt.axis("off")
-    plt.legend(loc="upper right", fontsize = 14)
-    #plt.legend(loc="upper right")
+    plt.legend(handles=handles, loc="upper right", fontsize=14, markerscale=2)  # Ajuste del tamaño de los puntos en la leyenda
     plt.margins(0)
     plt.tight_layout()
 
@@ -1360,7 +1562,6 @@ def generar_mapa_globalcellpci(
     ruta_png = safe_save_generic(ruta_png)
     plt.savefig(str(ruta_png), dpi=300, bbox_inches="tight", pad_inches=0)
     plt.close()
-
 
 #==============================================================================================
 # Validación dentro de 2km
@@ -1396,7 +1597,7 @@ def obtener_parametros_usuario():
     while localidad == "":
         localidad = input("Localidad no puede estar vacía. Intente nuevamente: ").strip()
 
-    tecnologia = input("👉 Ingrese el tipo de tecnología (UMTS, LTE, NR): ").strip()
+    tecnologia = input("👉 Ingrese el tipo de tecnología para reconstrucción (UMTS, LTE, NR): ").strip()
     while tecnologia == "":
         tecnologia = input("Tecnología no puede estar vacía. Intente nuevamente: ").strip()
 
@@ -1439,7 +1640,6 @@ def main():
     df_unidos = pd.concat(df_list, ignore_index=True)
 
     # Eliminar filas sin coordenadas, quitar espacios, poner como flotantes
-    #df_unidos.columns = df_unidos.columns.str.strip()  
     df_unidos = df_unidos.dropna(subset=["Longitude", "Latitude"])
     df_unidos["Latitude"] = pd.to_numeric(df_unidos["Latitude"], errors="coerce")
     df_unidos["Longitude"] = pd.to_numeric(df_unidos["Longitude"], errors="coerce")
@@ -1456,7 +1656,6 @@ def main():
     df_validados = df_unidos.copy()
 
     df_validados = reconstruir_globalcellid(df_validados, TECNOLOGIA, tabla_mnc)
-    #df_validados = obtener_fecha_hora(df_validados)
     df_validados = renombrar_columnas(df_validados)
     df_validados = establecer_RSRP_RSRQ(df_validados)
 
@@ -1471,16 +1670,34 @@ def main():
     df_validados = asignar_punto_medida(df_validados)
 
     # Reordenar columnas: insertar las nuevas en la posición original de GlobalCellId
-    pos = df_validados.columns.get_loc("GlobalCellId")
-    df_validados = df_validados.drop(columns=["GlobalCellId"])
+    try:
+        if "GlobalCellId" in df_validados.columns:
+            pos = df_validados.columns.get_loc("GlobalCellId")
+            df_validados = df_validados.drop(columns=["GlobalCellId"])
 
-    df_validados.insert(pos, "Tecnología", df_validados.pop("Tecnología"))
-    df_validados.insert(pos + 1, "MCC-MNC", df_validados.pop("MCC-MNC"))
-    df_validados.insert(pos + 2, "Global CellId /PCI", df_validados.pop("Global CellId /PCI"))
-    df_validados.insert(pos + 3, "PRSTM", df_validados.pop("PRSTM"))
+            # Insertar columnas derivadas en el mismo lugar
+            if "Tecnología" in df_validados.columns:
+                df_validados.insert(pos, "Tecnología", df_validados.pop("Tecnología"))
+            if "MCC-MNC" in df_validados.columns:
+                df_validados.insert(pos + 1, "MCC-MNC", df_validados.pop("MCC-MNC"))
+            if "Global CellId /PCI" in df_validados.columns:
+                df_validados.insert(pos + 2, "Global CellId /PCI", df_validados.pop("Global CellId /PCI"))
+            if "PRSTM" in df_validados.columns:
+                df_validados.insert(pos + 3, "PRSTM", df_validados.pop("PRSTM"))
 
-    pos_punto = df_validados.columns.get_loc("Punto de medida")
-    df_validados.insert(pos_punto, "Fila en log", df_validados.pop("Fila en log"))
+        if "Punto de medida" in df_validados.columns and "Fila en log" in df_validados.columns:
+            pos_punto = df_validados.columns.get_loc("Punto de medida")
+            df_validados.insert(pos_punto, "Fila en log", df_validados.pop("Fila en log"))
+    except KeyError as e:
+        print(f"⚠ Advertencia: No se pudo reorganizar columnas: {e}")
+        print("  Continuando con orden actual de columnas.")
+
+    # Reordenar Latitud y Longitud después de Time
+    pos_time = df_validados.columns.get_loc("Fecha/hora")
+    df_validados.insert(pos_time + 1, "Latitud", df_validados.pop("Latitud"))
+
+    pos_lat = df_validados.columns.get_loc("Latitud")
+    df_validados.insert(pos_lat + 1, "Longitud", df_validados.pop("Longitud"))
 
     df_validados = eliminar_columnas(df_validados)
 
@@ -1499,24 +1716,47 @@ def main():
 
     puntos_origen = []
 
-    with open(archivo_coord, "r", encoding="utf-8") as f:
-        for linea in f:
-            linea = linea.strip()
-            if not linea:
-                continue
-            
-            partes = [x.strip() for x in linea.split(",")]
-            
-            if len(partes) != 3:
-                print(f"⚠ Línea inválida en archivo de coordenadas: {linea}")
-                continue
-            
-            nombre, lat, lon = partes
-            puntos_origen.append({
-                "nombre": nombre,
-                "lat": float(lat),
-                "lon": float(lon)
-            })
+    # Validar que el archivo exista
+    if not archivo_coord.exists():
+        print(f"❌ Error: No se encontró archivo de coordenadas: {archivo_coord}")
+        print("Por favor, cree el archivo 'coordenadas_origen.txt' en la carpeta datos/")
+        input("Presione ENTER para terminar...")
+        return
+
+    try:
+        with open(archivo_coord, "r", encoding="utf-8") as f:
+            for linea in f:
+                linea = linea.strip()
+                if not linea:
+                    continue
+                
+                partes = [x.strip() for x in linea.split(",")]
+                
+                if len(partes) != 3:
+                    print(f"⚠ Línea inválida en archivo de coordenadas: {linea}")
+                    continue
+                
+                nombre, lat, lon = partes
+                try:
+                    puntos_origen.append({
+                        "nombre": nombre,
+                        "lat": float(lat),
+                        "lon": float(lon)
+                    })
+                except ValueError as e:
+                    print(f"⚠ Error convirtiendo coordenadas en línea '{linea}': {e}")
+                    continue
+    except Exception as e:
+        print(f"❌ Error leyendo archivo de coordenadas: {e}")
+        input("Presione ENTER para terminar...")
+        return
+    
+    # Validar que se hayan leído al menos 2 puntos
+    if len(puntos_origen) < 2:
+        print(f"❌ Error: Se requieren al menos 2 puntos en el archivo de coordenadas.")
+        print(f"   Solo se encontraron: {len(puntos_origen)} punto(s)")
+        input("Presione ENTER para terminar...")
+        return
     
     nombre0 = puntos_origen[0]["nombre"]
     lat0 = puntos_origen[0]["lat"]
@@ -1531,13 +1771,12 @@ def main():
     df_procesar["dentro_2km"] = np.where(df_procesar["dist_m"] <= 2000, " ", "Por fuera del área")
 
     resumen = generar_resumen_rsrp(df_procesar)
-    archivo_salida = carpeta_local / f"{CODIGO} {LOCALIDAD} UT_procesar.xlsx"
+    archivo_salida = carpeta_local / f"Ampliación Cobertura {CODIGO} {LOCALIDAD}.xlsx"
     exportar_excel_con_resumen(df_procesar, resumen, archivo_salida)
 
     print("✔ Archivo Excel con datos UT + resumen generado.")
 
     # 4. KMZ y mapa (solo muestras conservadas)
-    #df_conservada = df_procesar[df_procesar["Exclusiones"] == "muestra conservada"].copy()
     df_conservada = df_procesar[
         (df_procesar["Exclusiones"] == " ") &
         (df_procesar["dentro_2km"] == " ")
