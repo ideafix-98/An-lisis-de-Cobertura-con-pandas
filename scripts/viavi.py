@@ -380,7 +380,8 @@ def asignar_banda(df: pd.DataFrame) -> pd.DataFrame:
 
     condiciones = [
         (f >= 700) & (f < 800),
-        (f >= 840) & (f < 900),
+        (f >= 824) & (f < 900),
+        (f >= 1710) & (f < 1756),
         (f >= 1850) & (f < 1990),
         (f >= 2100) & (f < 2200),
         (f >= 2500) & (f < 2700),
@@ -390,6 +391,7 @@ def asignar_banda(df: pd.DataFrame) -> pd.DataFrame:
     bandas = [
         "700 MHz",
         "850 MHz",
+        "1700 Mhz"
         "1900 MHz",
         "2100 MHz",
         "2600 MHz",

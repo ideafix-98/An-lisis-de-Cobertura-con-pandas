@@ -65,19 +65,88 @@ SALIDAS = BASE.parent / "salidas"
 #==============================================================================================
 # Constantes de negocio
 #==============================================================================================
-OPERADOR_OBJETIVO = "UT Colombia Móvil - Colombia Telecomunicaciones"
+OPERADOR_OBJETIVO = "Unión Temporal Colombia Móvil - Colombia Telecomunicaciones"
+# Tabla de bandas → operador → MNC
+"""CSV de referencia: tabla_mnc.csv
+Banda Inicial,Banda Final,Operador,MNC
+703,723,Unión Temporal Colombia Móvil - Colombia Telecomunicaciones,103
+723.01,733,PARTNERS TELECOM COLOMBIA SAS,360
+733.01,743,COMUNICACION CELULAR SA COMCEL SA,101
+758,778,Unión Temporal Colombia Móvil - Colombia Telecomunicaciones,103
+778.01,788,PARTNERS TELECOM COLOMBIA SAS,360
+788.01,798,COMUNICACION CELULAR SA COMCEL SA,101
+824,836.4,COMUNICACION CELULAR SA COMCEL SA,101
+836.5,849,Unión Temporal Colombia Móvil - Colombia Telecomunicaciones,103
+869,881.45,COMUNICACION CELULAR SA COMCEL SA,101
+881.5,894,Unión Temporal Colombia Móvil - Colombia Telecomunicaciones,103
+1710,1725,PARTNERS TELECOM COLOMBIA SAS,360
+1725.01,1755,Unión Temporal Colombia Móvil - Colombia Telecomunicaciones,103
+1850,1865,COMUNICACION CELULAR SA COMCEL SA,101
+1867.5,1910,Unión Temporal Colombia Móvil - Colombia Telecomunicaciones,103
+1930,1945,COMUNICACION CELULAR SA COMCEL SA,101
+1947.5,1990,Unión Temporal Colombia Móvil - Colombia Telecomunicaciones,103
+2110,2125,PARTNERS TELECOM COLOMBIA SAS,360
+2125.01,2155,Unión Temporal Colombia Móvil - Colombia Telecomunicaciones,103
+2515,2525,PARTNERS TELECOM COLOMBIA SAS,360
+2525.01,2560,COMUNICACION CELULAR SA COMCEL SA,101
+2635,2645,PARTNERS TELECOM COLOMBIA SAS,360
+2645.01,2680,COMUNICACION CELULAR SA COMCEL SA,101
+3300,3380,Unión Temporal Colombia Móvil - Colombia Telecomunicaciones,103
+3380.01,3460,PARTNERS TELECOM COLOMBIA SAS,360
+3460.01,3540,ESTADO,111
+3540.01,3620,COMUNICACION CELULAR SA COMCEL SA,101
+"""
+# Definir la tabla de bandas como DataFrame
+data = {
+    'Banda Inicial': [703, 723.01, 733.01, 758, 778.01, 788.01, 824, 836.5, 869, 881.5, 1710, 1725.01, 1850, 1867.5, 1930, 1947.5, 2110, 2125.01, 2515, 2525.01, 2635, 2645.01, 3300, 3380.01, 3460.01, 3540.01],
+    'Banda Final': [723, 733, 743, 778, 788, 798, 836.4, 849, 881.45, 894, 1725, 1755, 1865, 1910, 1945, 1990, 2125, 2155, 2525, 2560, 2645, 2680, 3380, 3460, 3540, 3620],
+    'Operador': [
+        'Unión Temporal Colombia Móvil - Colombia Telecomunicaciones', 
+        'PARTNERS TELECOM COLOMBIA SAS', 
+        'COMUNICACION CELULAR SA COMCEL SA', 
+        'Unión Temporal Colombia Móvil - Colombia Telecomunicaciones', 
+        'PARTNERS TELECOM COLOMBIA SAS', 
+        'COMUNICACION CELULAR SA COMCEL SA', 
+        'COMUNICACION CELULAR SA COMCEL SA', 
+        'Unión Temporal Colombia Móvil - Colombia Telecomunicaciones', 
+        'COMUNICACION CELULAR SA COMCEL SA', 
+        'Unión Temporal Colombia Móvil - Colombia Telecomunicaciones', 
+        'PARTNERS TELECOM COLOMBIA SAS', 
+        'Unión Temporal Colombia Móvil - Colombia Telecomunicaciones', 
+        'COMUNICACION CELULAR SA COMCEL SA', 
+        'Unión Temporal Colombia Móvil - Colombia Telecomunicaciones', 
+        'COMUNICACION CELULAR SA COMCEL SA', 
+        'Unión Temporal Colombia Móvil - Colombia Telecomunicaciones', 
+        'PARTNERS TELECOM COLOMBIA SAS', 
+        'Unión Temporal Colombia Móvil - Colombia Telecomunicaciones', 
+        'PARTNERS TELECOM COLOMBIA SAS', 
+        'COMUNICACION CELULAR SA COMCEL SA', 
+        'PARTNERS TELECOM COLOMBIA SAS', 
+        'COMUNICACION CELULAR SA COMCEL SA', 
+        'Unión Temporal Colombia Móvil - Colombia Telecomunicaciones', 
+        'PARTNERS TELECOM COLOMBIA SAS', 
+        'ESTADO',
+        'COMUNICACION CELULAR SA COMCEL SA'
+    ],
+    'MNC': [103, 360, 101, 103, 360, 101, 101, 103, 101, 103, 360, 103, 101, 103, 101, 103, 360, 103, 360, 101, 360, 101, 103, 360, 111, 101]
+}
+
+# Crear el DataFrame
+print(len(data['Banda Inicial']), len(data['Banda Final']), len(data['Operador']), len(data['MNC']))
+tabla_mnc = pd.DataFrame(data)
 
 # Tabla de bandas → operador → MNC
+"""
 tabla_mnc = pd.DataFrame({
     "Banda Inicial": [
-        703, 723.01, 733.01, 758, 778.01, 788, 824, 836.51, 869, 881.5,
-        1710, 1725, 1850, 1867.5, 1930, 1947.5, 2110, 2125, 2515, 2525,
-        2635, 2645, 3300, 3380, 3460, 3540
+        703, 723.01, 733.01, 758, 778.01, 788.01, 824, 836.51, 869, 881.51,
+        1710, 1725.01, 1850, 1867.5, 1930, 1947.5, 2110, 2125.01,
+        2515, 2525.01, 2635, 2645.01, 3300, 3380, 3460, 3540
     ],
     "Banda Final": [
-        723, 733, 743, 778, 798, 798, 836.5, 849, 881.5, 894,
-        1725, 1755, 1865, 1910, 1945, 1990, 2125, 2155, 2525, 2555,
-        2645, 2675, 3379, 3450, 3530, 3610
+        723, 733, 743, 778, 788, 798, 836.5, 849, 881.5, 894,
+        1725, 1755, 1865, 1910, 1945, 1990, 2125, 2155,
+        2525, 2555, 2645, 2675, 3379, 3450, 3530, 3610
     ],
     "Operador": [
         "UT Colombia Móvil - Colombia Telecomunicaciones",
@@ -103,66 +172,24 @@ tabla_mnc = pd.DataFrame({
         "Partner Telecom Colombia",
         "Comcel S.A.",
         "UT Colombia Móvil - Colombia Telecomunicaciones",
-        "Partner Telecom Colombia",
-        "ESTADO - LITIGIO",
-        "Comcel S.A."
+        "Comcel S.A.",
+        "ESTADO",
+        "UT Colombia Móvil - Colombia Telecomunicaciones"
     ],
     "MNC": [
         103, 360, 101, 103, 360, 101, 101, 103, 101, 103,
-        360, 103, 101, 103, 101, 103, 360, 103, 360, 101,
-        360, 101, 103, 360, 111, 101
+        360, 103, 101, 103, 101, 103, 360, 103,
+        360, 101, 360, 101, 103, 360, 111, 101
     ]
 })
 """
-tabla_mnc = pd.DataFrame({
-    "Banda Inicial": [
-        703, 723.01, 733.01, 758, 778.01, 788, 836.51, 869, 881.51, 1710,
-        1725.01, 1850, 1867.5, 1930, 1947.5, 1950, 2515, 2525.01, 2530,
-        2645.01, 3380, 3389.5, 3460, 3570
-    ],
-    "Banda Final": [
-        723, 733, 743, 778, 798, 798, 849, 881.5, 894, 1725,
-        1755, 1865, 1910, 1945, 1990, 1995, 2525, 2535, 2540,
-        2675, 3379.5, 3390, 3470, 3600
-    ],
-    "Operador": [
-        "UT Colombia Móvil - Colombia Telecomunicaciones",
-        "Partner Telecom Colombia",
-        "Comcel S.A.",
-        "UT Colombia Móvil - Colombia Telecomunicaciones",
-        "Partner Telecom Colombia",
-        "Comcel S.A.",
-        "Comcel S.A.",
-        "Comcel S.A.",
-        "UT Colombia Móvil - Colombia Telecomunicaciones",
-        "Partner Telecom Colombia",
-        "UT Colombia Móvil - Colombia Telecomunicaciones",
-        "Comcel S.A.",
-        "UT Colombia Móvil - Colombia Telecomunicaciones",
-        "Comcel S.A.",
-        "UT Colombia Móvil - Colombia Telecomunicaciones",
-        "Partner Telecom Colombia",
-        "UT Colombia Móvil - Colombia Telecomunicaciones",
-        "Partner Telecom Colombia",
-        "Comcel S.A.",
-        "Comcel S.A.",
-        "UT Colombia Móvil - Colombia Telecomunicaciones",
-        "Partner Telecom Colombia",
-        "ESTADO",
-        "Comcel S.A."
-    ],
-    "MNC": [
-        103, 360, 101, 103, 360, 101, 101, 101, 103, 360,
-        103, 101, 103, 101, 103, 360, 103, 360, 101,
-        101, 103, 360, 111, 101
-    ]
-})
-"""
+
+# Mapa MCC-MNC → PRSTM
 mapa_prstm = {
-    "732101": "Comcel S.A.",
-    "732103": "UT Colombia Móvil - Colombia Telecomunicaciones",
-    "732123": "UT Colombia Móvil - Colombia Telecomunicaciones",
-    "732360": "Partner Telecom Colombia",
+    "732101": "COMUNICACION CELULAR SA COMCEL SA",
+    "732103": "Unión Temporal Colombia Móvil - Colombia Telecomunicaciones",
+    "732123": "Unión Temporal Colombia Móvil - Colombia Telecomunicaciones",
+    "732360": "PARTNERS TELECOM COLOMBIA SAS",
 }
 
 #==============================================================================================
@@ -256,7 +283,7 @@ def reconstruir_globalcellid(df: pd.DataFrame, tech: str, tabla_mnc: pd.DataFram
 
         # Copiar GlobalCellId de filas siguientes con mismo PCI
         for jj in range(ii + 1, min(ii + 1 + max_ventana, n)):
-            if df.iat[jj, idx_pci] == pci_value and pd.notna(df.iat[jj, idx_global]):
+            if df.iat[jj, idx_pci] == pci_value and df.iat[jj, idx_freq] == freq_value and pd.notna(df.iat[jj, idx_global]):
                 df.iat[ii, idx_global] = df.iat[jj, idx_global]
                 break
 
@@ -365,9 +392,10 @@ def asignar_banda(df: pd.DataFrame) -> pd.DataFrame:
 
     condiciones = [
         (f >= 700) & (f < 800),
-        (f >= 840) & (f < 900),
-        (f >= 1850) & (f < 1990),
-        (f >= 2100) & (f < 2200),
+        (f >= 820) & (f < 900),
+        (f >= 1710) & (f < 1756),   # ← Banda 1700 MHz agregada
+        (f >= 1850) & (f < 1991),
+        (f >= 2100) & (f < 2156),
         (f >= 2500) & (f < 2700),
         (f >= 3300) & (f < 3700),
     ]
@@ -375,6 +403,7 @@ def asignar_banda(df: pd.DataFrame) -> pd.DataFrame:
     bandas = [
         "700 MHz",
         "850 MHz",
+        "1700 MHz",   # ← Banda agregada
         "1900 MHz",
         "2100 MHz",
         "2600 MHz",
@@ -383,6 +412,7 @@ def asignar_banda(df: pd.DataFrame) -> pd.DataFrame:
 
     df["Banda (MHz)"] = np.select(condiciones, bandas, default="Otra banda")
     return df
+
 
 #==============================================================================================
 # Punto de medida (agrupación por Lat/Long)
@@ -654,14 +684,35 @@ def exportar_excel_con_resumen(df: pd.DataFrame, resumen: pd.DataFrame, ruta_sal
         print(f"⚠ Advertencia: openpyxl no disponible. Excel guardado sin estilos avanzados.")
         print(f"  Instale openpyxl con: pip install openpyxl")
     
-#==============================================================================================
-# KMZ radio 2km
-#==============================================================================================
-def generar_radio_2km(CODIGO: str, LOCALIDAD: str):
+def generar_kmz_completo(df: pd.DataFrame, CODIGO: str, LOCALIDAD: str, MNC_SELECCIONADOS: list):
+    """
+    Genera un ÚNICO archivo KMZ que contiene:
+    - Radio 2 km
+    - Potencia (RSRP)
+    - Calidad (RSRQ)
+    - Bandas
+    - MNC
+    - GlobalCell/PCI
+    """
+
+    SALIDAS.mkdir(parents=True, exist_ok=True)
+
+    #=====================================================================
+    # Crear un solo objeto KML
+    #=====================================================================
     kml = simplekml.Kml()
 
-    archivo_coord = DATOS / "coordenadas_origen.txt"
+    ICON_URL = "http://maps.google.com/mapfiles/kml/shapes/shaded_dot.png"
 
+    #=====================================================================
+    # 1) RADIO 2 KM
+    #=====================================================================
+    folder_radio = kml.newfolder(name="Círculo 2 km + puntos origen")
+
+    # Visibilidad con google earth
+    #folder_radio.style.liststyle.listitemtype = "check"   # visible por defecto
+
+    archivo_coord = DATOS / "coordenadas_origen.txt"
     if archivo_coord.exists():
         try:
             puntos = []
@@ -676,397 +727,200 @@ def generar_radio_2km(CODIGO: str, LOCALIDAD: str):
                     nombre, lat, lon = partes
                     puntos.append((nombre, float(lat), float(lon)))
 
-            if not puntos:
-                return
+            if puntos:
+                nombre_origen, lat0, lon0 = puntos[0]
 
-            nombre_origen, lat0, lon0 = puntos[0]
-            nombre_estacion, lat1, lon1 = puntos[1]
-            radio_m = 2000
-            R = 6371000
-            coords_circulo = []
+                R = 6371000
+                radio_m = 2000
+                coords_circulo = []
 
-            for ang in range(0, 361):
-                brng = math.radians(ang)
-                lat_rad = math.radians(lat0)
-                lon_rad = math.radians(lon0)
-                lat_c = math.asin(
-                    math.sin(lat_rad) * math.cos(radio_m / R) +
-                    math.cos(lat_rad) * math.sin(radio_m / R) * math.cos(brng)
+                for ang in range(0, 361):
+                    brng = math.radians(ang)
+                    lat_rad = math.radians(lat0)
+                    lon_rad = math.radians(lon0)
+                    lat_c = math.asin(
+                        math.sin(lat_rad) * math.cos(radio_m / R) +
+                        math.cos(lat_rad) * math.sin(radio_m / R) * math.cos(brng)
+                    )
+                    lon_c = lon_rad + math.atan2(
+                        math.sin(brng) * math.sin(radio_m / R) * math.cos(lat_rad),
+                        math.cos(radio_m / R) - math.sin(lat_rad) * math.sin(lat_c)
+                    )
+                    coords_circulo.append((math.degrees(lon_c), math.degrees(lat_c)))
+
+                coords_circulo.append(coords_circulo[0])
+
+                pol = folder_radio.newpolygon(
+                    name=f"Círculo 2 km alrededor de {nombre_origen}",
+                    outerboundaryis=coords_circulo,
                 )
-                lon_c = lon_rad + math.atan2(
-                    math.sin(brng) * math.sin(radio_m / R) * math.cos(lat_rad),
-                    math.cos(radio_m / R) - math.sin(lat_rad) * math.sin(lat_c)
-                )
-                coords_circulo.append((math.degrees(lon_c), math.degrees(lat_c)))
+                pol.style.polystyle.fill = 0
+                pol.style.linestyle.color = simplekml.Color.hex("ff00ff")
+                pol.style.linestyle.width = 3
 
-            coords_circulo.append(coords_circulo[0])
-
-            folder_circulo = kml.newfolder(name="Círculo 2 km + puntos archivo")
-            pol = folder_circulo.newpolygon(
-                name=f"Círculo de 2 km alrededor de {nombre_origen}",
-                outerboundaryis=coords_circulo,
-            )
-            pol.style.polystyle.fill = 0
-            pol.style.linestyle.color = simplekml.Color.hex("ff00ff")  # fucsia opaco
-            pol.style.linestyle.width = 3
-            pol.altitudemode = simplekml.AltitudeMode.clamptoground
-
-            ICON22 = "http://maps.google.com/mapfiles/kml/shapes/donut.png"
-            for nombre, lat, lon in puntos:
-                p = folder_circulo.newpoint(name=nombre, coords=[(lon, lat)])
-                p.style.labelstyle.color = simplekml.Color.orange
-                p.style.iconstyle.color = simplekml.Color.hex("ff00ff")
-                #p.style.iconstyle.label = simplekml.Color.hex("#eb7734")
-                p.style.iconstyle.icon.href = ICON22
-                p.style.iconstyle.scale = 1.2
-
-            ruta_kmz = SALIDAS / f"{CODIGO} {LOCALIDAD}"/ "radio_2km.kmz"
-            ruta_kmz = safe_save_generic(ruta_kmz)
-            kml.savekmz(str(ruta_kmz))
+                ICON22 = "http://maps.google.com/mapfiles/kml/shapes/donut.png"
+                for nombre, lat, lon in puntos:
+                    p = folder_radio.newpoint(name=nombre, coords=[(lon, lat)])
+                    p.style.labelstyle.color = simplekml.Color.orange
+                    p.style.iconstyle.color = simplekml.Color.hex("ff00ff")
+                    p.style.iconstyle.icon.href = ICON22
+                    p.style.iconstyle.scale = 1.2
 
         except Exception as e:
             print(f"⚠ Error procesando coordenadas: {e}")
 
-    else:
-        print(f"⚠ No existe el archivo de coordenadas: {archivo_coord}")
-    
-    return radio_m    
-    
-#==============================================================================================
-# KMZ de potencia (usando df ya filtrado y clasificado)
-#==============================================================================================
-def generar_kmz_potencia(df_conservada: pd.DataFrame, CODIGO: str, LOCALIDAD: str):
-    SALIDAS.mkdir(parents=True, exist_ok=True)
-
-    df_conservada = clasificar_rsrp(df_conservada)
-    df_kmz = df_conservada[df_conservada["color_rsrp"].notna()].copy()
-
-    kml = simplekml.Kml()
+    #=====================================================================
+    # 2) POTENCIA (RSRP)
+    #=====================================================================
+    df_rsrp = clasificar_rsrp(df.copy())
+    df_rsrp = df_rsrp[df_rsrp["color_rsrp"].notna()]
+    folder_rsrp = kml.newfolder(name="Potencia (RSRP)")
 
     folders_potencia = {
-        "red":    kml.newfolder(name="-80 a -30 dBm"),
-        "yellow": kml.newfolder(name="-90 a -80 dBm"),
-        "green":  kml.newfolder(name="-100 a -90 dBm"),
-        "blue":   kml.newfolder(name="-150 a -100 dBm"),
+        "red":    folder_rsrp.newfolder(name="-80 a -30 dBm"),
+        "yellow": folder_rsrp.newfolder(name="-90 a -80 dBm"),
+        "green":  folder_rsrp.newfolder(name="-100 a -90 dBm"),
+        "blue":   folder_rsrp.newfolder(name="-150 a -100 dBm"),
     }
 
-    ICON_URL = "http://maps.google.com/mapfiles/kml/shapes/shaded_dot.png"
-
-    for _, row in df_kmz.iterrows():
+    for _, row in df_rsrp.iterrows():
         color = row["color_rsrp"]
-        folder = folders_potencia[color]
+        f = folders_potencia[color]
+        p = f.newpoint(coords=[(row["Longitud"], row["Latitud"])])
+        #p.name = f"{row['RSRP (dBm)']:.0f} dBm"
+        p.description = "\n".join(f"{c}: {v}" for c, v in row.items())
+        p.style.iconstyle.color = getattr(simplekml.Color, color)
+        p.style.iconstyle.icon.href = ICON_URL
+        p.style.iconstyle.scale = 0.6
 
-        lon = float(row["Longitud"])
-        lat = float(row["Latitud"])
-        rsrp = float(row["RSRP (dBm)"])
+    #=====================================================================
+    # 3) CALIDAD (RSRQ)
+    #=====================================================================
+    df_rsrq = clasificar_rsrq(df.copy())
+    df_rsrq = df_rsrq[df_rsrq["color_rsrq"].notna()]
+    folder_rsrq = kml.newfolder(name="Calidad (RSRQ)")
 
-        pnt = folder.newpoint(coords=[(lon, lat)])
-        pnt.name = f"{rsrp:.0f} dBm"
-
-        # Descripción con todas las columnas
-        descripcion = "\n".join(f"{col}: {val}" for col, val in row.items())
-        pnt.description = descripcion
-
-        pnt.altitudemode = simplekml.AltitudeMode.clamptoground
-        pnt.style.iconstyle.scale = 0.6
-        pnt.style.iconstyle.icon.href = ICON_URL
-        pnt.style.labelstyle.scale = 0
-
-        # Asignar color del ícono
-        if color == "red":
-            pnt.style.iconstyle.color = simplekml.Color.red
-        elif color == "yellow":
-            pnt.style.iconstyle.color = simplekml.Color.yellow
-        elif color == "green":
-            pnt.style.iconstyle.color = simplekml.Color.lime
-        elif color == "blue":
-            pnt.style.iconstyle.color = simplekml.Color.blue
-    
-    
-
-    ruta_kmz = SALIDAS / f"{CODIGO} {LOCALIDAD}"/ f"{CODIGO} {LOCALIDAD} RSRP.kmz"
-    ruta_kmz = safe_save_generic(ruta_kmz)
-    kml.savekmz(str(ruta_kmz))
-    #print(f"✔ KMZ guardado en: {ruta_kmz}")
-
-#==============================================================================================
-# KMZ de calidad
-#==============================================================================================
-def generar_kmz_calidad(df_conservada: pd.DataFrame, CODIGO: str, LOCALIDAD: str):
-    SALIDAS.mkdir(parents=True, exist_ok=True)
-    
-    df_conservada = clasificar_rsrq(df_conservada)
-    df_kmz = df_conservada[df_conservada["color_rsrq"].notna()].copy()
-    
-    kml = simplekml.Kml()
-    
     folders_calidad = {
-        "red":    kml.newfolder(name="-10 a -0 dB"),
-        "yellow": kml.newfolder(name="-15 a -10.001 dB"),
-        "green":  kml.newfolder(name="-20 a -15.001 dB"),
-        "blue":   kml.newfolder(name="-40 a -20.001 dB"),
+        "red":    folder_rsrq.newfolder(name="-10 a 0 dB"),
+        "yellow": folder_rsrq.newfolder(name="-15 a -10 dB"),
+        "green":  folder_rsrq.newfolder(name="-20 a -15 dB"),
+        "blue":   folder_rsrq.newfolder(name="-40 a -20 dB"),
     }
     
-    ICON_URL = "http://maps.google.com/mapfiles/kml/shapes/shaded_dot.png"
-    
-    for _, row in df_kmz.iterrows():
+    for _, row in df_rsrq.iterrows():
         color = row["color_rsrq"]
-        folder = folders_calidad[color]
+        f = folders_calidad[color]
+        p = f.newpoint(coords=[(row["Longitud"], row["Latitud"])])
+        #p.name = f"{row['RSRQ (dB)']:.0f} dB"
+        p.description = "\n".join(f"{c}: {v}" for c, v in row.items())
+        p.style.iconstyle.color = getattr(simplekml.Color, color)
+        p.style.iconstyle.icon.href = ICON_URL
+        p.style.iconstyle.scale = 0.6
 
-        lon = float(row["Longitud"])
-        lat = float(row["Latitud"])
-        rsrp = float(row["RSRQ (dB)"])
+    #=====================================================================
+    # 4) BANDAS
+    #=====================================================================
+    df_banda = df[df["Banda (MHz)"].notna()]
+    folder_banda = kml.newfolder(name="Bandas")   
 
-        pnt = folder.newpoint(coords=[(lon, lat)])
-        pnt.name = f"{rsrp:.0f} dB"
-
-        # Descripción con todas las columnas
-        descripcion = "\n".join(f"{col}: {val}" for col, val in row.items())
-        pnt.description = descripcion
-
-        pnt.altitudemode = simplekml.AltitudeMode.clamptoground
-        pnt.style.iconstyle.scale = 0.6
-        pnt.style.iconstyle.icon.href = ICON_URL
-        pnt.style.labelstyle.scale = 0
-
-        # Asignar color del ícono
-        if color == "red":
-            pnt.style.iconstyle.color = simplekml.Color.red
-        elif color == "yellow":
-            pnt.style.iconstyle.color = simplekml.Color.yellow
-        elif color == "green":
-            pnt.style.iconstyle.color = simplekml.Color.lime
-        elif color == "blue":
-            pnt.style.iconstyle.color = simplekml.Color.blue
-    ruta_kmz = SALIDAS / f"{CODIGO} {LOCALIDAD}"/ f"{CODIGO} {LOCALIDAD} RSRQ.kmz"
-    ruta_kmz = safe_save_generic(ruta_kmz)
-    kml.savekmz(str(ruta_kmz))
-    #print(f"✔ KMZ guardado en: {ruta_kmz}")
-    
-#==============================================================================================
-# KMZ de banda
-#==============================================================================================
-def generar_kmz_banda(df: pd.DataFrame, CODIGO: str, LOCALIDAD: str):
-    SALIDAS.mkdir(parents=True, exist_ok=True)
-
-    # Filtrar filas que sí tienen banda
-    df_banda = df.copy()
-    df_banda = df_banda[df_banda["Banda (MHz)"].notna()]
-
-    if df_banda.empty:
-        print("⚠ No hay datos con 'Banda (MHz)' para generar el KMZ de bandas.")
-        return
-
-    kml = simplekml.Kml()
-    ICON_URL = "http://maps.google.com/mapfiles/kml/shapes/shaded_dot.png"
-
-    # Definir colores por banda (KML usa Color.rgb(R,G,B,A))
     COLOR_BANDA_KML = {
-        "700 MHz":  simplekml.Color.rgb(255,   0,   0, 255),   # rojo
-        "850 MHz":  simplekml.Color.rgb(255, 165,   0, 255),   # naranja
-        "1900 MHz": simplekml.Color.rgb(255, 255,   0, 255),   # amarillo
-        "2100 MHz": simplekml.Color.rgb(  0, 128,   0, 255),   # verde
-        "2600 MHz": simplekml.Color.rgb(  0,   0, 255, 255),   # azul
-        "3500 MHz": simplekml.Color.rgb(128,   0, 128, 255),   # morado
-        "Otra banda": simplekml.Color.rgb(128, 128, 128, 255), # gris
+        "700 MHz":  simplekml.Color.rgb(255, 0, 0, 255),
+        "850 MHz":  simplekml.Color.rgb(255, 165, 0, 255),
+        "1700 MHz": simplekml.Color.rgb(0, 255, 255, 255),
+        "1900 MHz": simplekml.Color.rgb(255, 255, 0, 255),
+        "2100 MHz": simplekml.Color.rgb(0, 128, 0, 255),
+        "2600 MHz": simplekml.Color.rgb(0, 0, 255, 255),
+        "3500 MHz": simplekml.Color.rgb(128, 0, 128, 255),
+        "Otra banda": simplekml.Color.rgb(128, 128, 128, 255),
     }
 
-    # Crear una carpeta por banda detectada en los datos
-    carpetas_por_banda = {}
-    for banda in sorted(df_banda["Banda (MHz)"].unique()):
-        carpeta = kml.newfolder(name=f"Banda {banda}")
-        carpetas_por_banda[banda] = carpeta
+    carpetas_banda = {
+        b: folder_banda.newfolder(name=f"Banda {b}") for b in df_banda["Banda (MHz)"].unique()
+    }
 
-    # Recorrer filas y crear puntos
     for _, row in df_banda.iterrows():
-        banda = row["Banda (MHz)"]
+        b = row["Banda (MHz)"]
+        p = carpetas_banda[b].newpoint(coords=[(row["Longitud"], row["Latitud"])])
+        #p.name = str(b)
+        p.description = "\n".join(f"{c}: {v}" for c, v in row.items())
+        p.style.iconstyle.icon.href = ICON_URL
+        p.style.iconstyle.color = COLOR_BANDA_KML.get(b, simplekml.Color.gray)
+        p.style.iconstyle.scale = 0.6
 
-        # Carpeta y color según la banda
-        folder = carpetas_por_banda.get(banda)
-        color_icono = COLOR_BANDA_KML.get(banda, simplekml.Color.rgb(128, 128, 128, 255))
-
-        lon = float(row["Longitud"])
-        lat = float(row["Latitud"])
-
-        pnt = folder.newpoint(coords=[(lon, lat)])
-
-        # Nombre corto (puede ser la banda misma)
-        pnt.name = str(banda)
-
-        # Descripción: todas las columnas
-        descripcion = "\n".join(f"{col}: {val}" for col, val in row.items())
-        pnt.description = descripcion
-
-        # Estilo
-        pnt.altitudemode = simplekml.AltitudeMode.clamptoground
-        pnt.style.iconstyle.scale = 0.6
-        pnt.style.iconstyle.icon.href = ICON_URL
-        pnt.style.iconstyle.color = color_icono
-        pnt.style.labelstyle.scale = 0  # sin texto en el mapa, solo al hacer clic
-
-    ruta_kmz = SALIDAS / f"{CODIGO} {LOCALIDAD}"/ f"{CODIGO} {LOCALIDAD} Bandas.kmz"
-    ruta_kmz = safe_save_generic(ruta_kmz)
-    kml.savekmz(str(ruta_kmz))
+    #=====================================================================
+    # 5) MNC
+    #=====================================================================
+    df_mnc = df[df["MCC-MNC"].notna()]
+    folder_mnc = kml.newfolder(name="MNC")  
     
-#==============================================================================================
-# KMZ de MNC
-#==============================================================================================
-def generar_kmz_mnc(df: pd.DataFrame, CODIGO: str, LOCALIDAD: str, MNC_SELECCIONADOS: list):
-    SALIDAS.mkdir(parents=True, exist_ok=True)
-
-    # Filtrar filas que sí tienen banda
-    df_mnc = df.copy()
-    df_mnc = df_mnc[df_mnc["MCC-MNC"].notna()]
-
-    if df_mnc.empty:
-        print("⚠ No hay datos con 'MCC-MNC' para generar el KMZ de MCC-MNC.")
-        return
-
-    kml = simplekml.Kml()
-    ICON_URL = "http://maps.google.com/mapfiles/kml/shapes/shaded_dot.png"
-
-    # Definir colores por mnc (KML usa Color.rgb(R,G,B,A))
-    # Convertir lista de MNC a diccionario de colores
-    COLOR_MNC_KML = {}
     colores_disponibles = [
-        simplekml.Color.rgb(  0,   0, 255, 255),   # azul
-        simplekml.Color.rgb(  0, 128,   0, 255),   # verde
-        simplekml.Color.rgb(255,   0,   0, 255),   # rojo
-        simplekml.Color.rgb(255, 165,   0, 255),   # naranja
+        simplekml.Color.blue,
+        simplekml.Color.lime,
+        simplekml.Color.red,
+        simplekml.Color.orange,
     ]
-    for i, mnc in enumerate(MNC_SELECCIONADOS):
-        color = colores_disponibles[i % len(colores_disponibles)]
-        COLOR_MNC_KML[f"732{mnc}"] = color
 
-    # Crear una carpeta por mnc detectada en los datos
-    carpetas_por_mnc = {}
-    for mnc in sorted(df_mnc["MCC-MNC"].unique()):
-        carpeta = kml.newfolder(name=f"MNC {mnc}")
-        carpetas_por_mnc[mnc] = carpeta
+    COLOR_MNC = {}
+    for i, m in enumerate(MNC_SELECCIONADOS):
+        COLOR_MNC[f"732{m}"] = colores_disponibles[i % len(colores_disponibles)]
 
-    # Recorrer filas y crear puntos
+    carpetas_mnc = {
+        m: folder_mnc.newfolder(name=f"MNC {m}") for m in df_mnc["MCC-MNC"].unique()
+    }
+
     for _, row in df_mnc.iterrows():
-        mnc = row["MCC-MNC"]
+        m = row["MCC-MNC"]
+        p = carpetas_mnc[m].newpoint(coords=[(row["Longitud"], row["Latitud"])])
+        #p.name = str(m)
+        p.description = "\n".join(f"{c}: {v}" for c, v in row.items())
+        p.style.iconstyle.icon.href = ICON_URL
+        p.style.iconstyle.color = COLOR_MNC.get(m, simplekml.Color.gray)
+        p.style.iconstyle.scale = 0.6
 
-        # Carpeta y color según la mnc
-        folder = carpetas_por_mnc.get(mnc)
-        color_icono = COLOR_MNC_KML.get(mnc, simplekml.Color.rgb(128, 128, 128, 255))
-
-        lon = float(row["Longitud"])
-        lat = float(row["Latitud"])
-
-        pnt = folder.newpoint(coords=[(lon, lat)])
-
-        # Nombre corto 
-        pnt.name = str(mnc)
-
-        # Descripción: todas las columnas
-        descripcion = "\n".join(f"{col}: {val}" for col, val in row.items())
-        pnt.description = descripcion
-
-        # Estilo
-        pnt.altitudemode = simplekml.AltitudeMode.clamptoground
-        pnt.style.iconstyle.scale = 0.6
-        pnt.style.iconstyle.icon.href = ICON_URL
-        pnt.style.iconstyle.color = color_icono
-        pnt.style.labelstyle.scale = 0  # sin texto en el mapa, solo al hacer clic
-
-    ruta_kmz = SALIDAS / f"{CODIGO} {LOCALIDAD}"/ f"{CODIGO} {LOCALIDAD} MNC.kmz"
-    ruta_kmz = safe_save_generic(ruta_kmz)
-    kml.savekmz(str(ruta_kmz))
-    
-#==============================================================================================
-# KMZ de GLOBALCELL/PCI
-#==============================================================================================
-def generar_kmz_globalcellpci(df: pd.DataFrame, CODIGO: str, LOCALIDAD: str):
-    """
-    Genera un KMZ agrupando puntos por 'Global CellId /PCI':
-    - Calcula los 5 valores más frecuentes.
-    - Cada uno se grafica por separado.
-    - Todos los demás valores se agrupan en la categoría 'Otros'.
-    """
-
-    SALIDAS.mkdir(parents=True, exist_ok=True)
-
-    df_gc = df.copy()
-    # Filtrar filas que sí tienen valor en Global CellId /PCI
-    if "Global CellId /PCI" not in df_gc.columns:
-        print("⚠ No existe la columna 'Global CellId /PCI' en el DataFrame.")
-        return
-
-    df_gc = df_gc[df_gc["Global CellId /PCI"].notna()]
-
-    if df_gc.empty:
-        print("⚠ No hay datos con 'Global CellId /PCI' para generar el KMZ.")
-        return
-
-    # Conteo de frecuencias
+    #=====================================================================
+    # 6) GLOBALCELL / PCI
+    #=====================================================================
+    df_gc = df[df["Global CellId /PCI"].notna()].copy()
+    folder_gc = kml.newfolder(name="GlobalCell / PCI")
+ 
     vc = df_gc["Global CellId /PCI"].value_counts()
-    top_n = min(5, len(vc))  # <-- cambiado de 4 a 5
-    top_vals = list(vc.head(top_n).index)
+    top_vals = list(vc.head(5).index)
 
-    # Crear categoría 'GCID_cat': uno de los top 5 o 'Otros'
-    def categorizar(val):
-        return val if val in top_vals else "Otros"
+    def cat(v): return v if v in top_vals else "Otros"
+    df_gc["CAT"] = df_gc["Global CellId /PCI"].apply(cat)
 
-    df_gc["GCID_cat"] = df_gc["Global CellId /PCI"].apply(categorizar)
-
-    # KML
-    kml = simplekml.Kml()
-    ICON_URL = "http://maps.google.com/mapfiles/kml/shapes/shaded_dot.png"
-
-    # Colores para los 5 valores principales + Otros
-    colores_kml = [
+    colores_gc = [
         simplekml.Color.red,
         simplekml.Color.blue,
         simplekml.Color.lime,
         simplekml.Color.yellow,
-        simplekml.Color.purple,  # <-- color extra para el top 5
+        simplekml.Color.purple,
     ]
 
-    COLOR_CAT = {}
-    for i, val in enumerate(top_vals):
-        COLOR_CAT[val] = colores_kml[i]
+    COLOR_GC = {val: colores_gc[i] for i, val in enumerate(top_vals)}
+    COLOR_GC["Otros"] = simplekml.Color.gray
 
-    # Color para "Otros"
-    COLOR_CAT["Otros"] = simplekml.Color.gray
+    carpetas_gc = {
+        c: folder_gc.newfolder(name=c) for c in df_gc["CAT"].unique()
+    }
 
-    # Crear carpetas por categoría con cantidad en el nombre
-    carpetas = {}
-    conteo_cat = df_gc["GCID_cat"].value_counts().to_dict()
-    for cat in sorted(conteo_cat.keys(), key=lambda x: (x != "Otros", x)):
-        nombre_carpeta = f"{cat} ({conteo_cat[cat]} muestras)"
-        carpetas[cat] = kml.newfolder(name=nombre_carpeta)
-
-    # Crear puntos en cada carpeta
     for _, row in df_gc.iterrows():
-        cat = row["GCID_cat"]
-        folder = carpetas[cat]
-        color_icono = COLOR_CAT.get(cat, simplekml.Color.gray)
+        c = row["CAT"]
+        p = carpetas_gc[c].newpoint(coords=[(row["Longitud"], row["Latitud"])])
+        #p.name = str(row["Global CellId /PCI"])
+        p.description = "\n".join(f"{col}: {val}" for col, val in row.items())
+        p.style.iconstyle.icon.href = ICON_URL
+        p.style.iconstyle.color = COLOR_GC[c]
+        p.style.iconstyle.scale = 0.6
 
-        lon = float(row["Longitud"])
-        lat = float(row["Latitud"])
-
-        pnt = folder.newpoint(coords=[(lon, lat)])
-
-        # Nombre del punto: valor de Global CellId /PCI
-        pnt.name = str(row["Global CellId /PCI"])
-
-        # Descripción con todas las columnas
-        descripcion = "\n".join(f"{col}: {val}" for col, val in row.items())
-        pnt.description = descripcion
-
-        # Estilo de punto
-        pnt.altitudemode = simplekml.AltitudeMode.clamptoground
-        pnt.style.iconstyle.scale = 0.6
-        pnt.style.iconstyle.icon.href = ICON_URL
-        pnt.style.iconstyle.color = color_icono
-        pnt.style.labelstyle.scale = 0
-    
-    # Guardar KMZ
-    ruta_kmz = SALIDAS / f"{CODIGO} {LOCALIDAD}"/ f"{CODIGO} {LOCALIDAD} GlobalCell_PCI.kmz"
+    #=====================================================================
+    # GUARDAR KMZ ÚNICO
+    #=====================================================================
+    ruta_kmz = SALIDAS / f"{CODIGO} {LOCALIDAD}" / f"{CODIGO} {LOCALIDAD}.kmz"
     ruta_kmz = safe_save_generic(ruta_kmz)
     kml.savekmz(str(ruta_kmz))
+
+    print(f"✔ KMZ ÚNICO generado: {ruta_kmz}")
 
 
 #==============================================================================================
@@ -1305,6 +1159,7 @@ def generar_mapa_banda(
     COLOR_BANDA_PLOT = {
         "700 MHz": "#FF0000",  
         "850 MHz": "#FF9900",
+        "1700 MHz": "#EC6AB8",
         "1900 MHz": "#FFFF00",
         "2100 MHz": "#008000",
         "2600 MHz": "#0000FF",
@@ -1549,7 +1404,7 @@ def generar_mapa_globalcellpci(
     
     total = len(df_gc)
     plt.title(
-        f"Mapa Global CellId /PCI (top 5 + Otros) - {CODIGO} {LOCALIDAD}\nTotal muestras: {total}",
+        f"CID sector (top 5 + Otros) - {CODIGO} {LOCALIDAD}\nTotal muestras: {total}",
         fontsize=13
     )
 
@@ -1558,7 +1413,7 @@ def generar_mapa_globalcellpci(
     plt.margins(0)
     plt.tight_layout()
 
-    ruta_png = SALIDAS / f"{CODIGO} {LOCALIDAD}" / f"{CODIGO} {LOCALIDAD} GlobalCell_PCI.png"
+    ruta_png = SALIDAS / f"{CODIGO} {LOCALIDAD}" / f"{CODIGO} {LOCALIDAD} CID-sector.png"
     ruta_png = safe_save_generic(ruta_png)
     plt.savefig(str(ruta_png), dpi=300, bbox_inches="tight", pad_inches=0)
     plt.close()
@@ -1771,23 +1626,22 @@ def main():
     df_procesar["dentro_2km"] = np.where(df_procesar["dist_m"] <= 2000, " ", "Por fuera del área")
 
     resumen = generar_resumen_rsrp(df_procesar)
-    archivo_salida = carpeta_local / f"Ampliación Cobertura {CODIGO} {LOCALIDAD}.xlsx"
-    exportar_excel_con_resumen(df_procesar, resumen, archivo_salida)
-
-    print("✔ Archivo Excel con datos UT + resumen generado.")
-
+    
     # 4. KMZ y mapa (solo muestras conservadas)
     df_conservada = df_procesar[
         (df_procesar["Exclusiones"] == " ") &
         (df_procesar["dentro_2km"] == " ")
     ].copy()
     
-    radio_m = generar_radio_2km(CODIGO, LOCALIDAD)
-    generar_kmz_potencia(df_conservada, CODIGO, LOCALIDAD)
-    generar_kmz_calidad(df_conservada, CODIGO, LOCALIDAD)
-    generar_kmz_banda(df_conservada, CODIGO, LOCALIDAD)
-    generar_kmz_mnc(df_conservada, CODIGO, LOCALIDAD, MNC_SELECCIONADOS)
-    generar_kmz_globalcellpci(df_conservada, CODIGO, LOCALIDAD)
+    
+    generar_kmz_completo(df_conservada, CODIGO, LOCALIDAD, MNC_SELECCIONADOS)
+    radio_m = 2000
+    #radio_m = generar_radio_2km(CODIGO, LOCALIDAD)
+    #generar_kmz_potencia(df_conservada, CODIGO, LOCALIDAD)
+    #generar_kmz_calidad(df_conservada, CODIGO, LOCALIDAD)
+    #generar_kmz_banda(df_conservada, CODIGO, LOCALIDAD)
+    #generar_kmz_mnc(df_conservada, CODIGO, LOCALIDAD, MNC_SELECCIONADOS)
+    #generar_kmz_globalcellpci(df_conservada, CODIGO, LOCALIDAD)
     
     generar_mapa_rsrp(df_conservada, CODIGO, LOCALIDAD, 
     lat0, lon0, nombre0, 
@@ -1809,6 +1663,22 @@ def main():
     lat0, lon0, nombre0, 
     lat1, lon1, nombre1, 
     radio_m)
+
+    # 5. Exportar Excel final con resumen
+
+    df_procesar.rename(columns={
+        "Exclusiones": "Mejor Medida",
+        "dentro_2km": "Exclusiones",
+        "Global CellId /PCI": "CID sector"
+    }, inplace=True)
+  
+    pos_banda = df_procesar.columns.get_loc("Banda (MHz)")
+    df_procesar.insert(pos_banda + 1, "Exclusiones", df_procesar.pop("Exclusiones"))
+    
+    archivo_salida = carpeta_local / f"Ampliación Cobertura {CODIGO} {LOCALIDAD}.xlsx"
+    exportar_excel_con_resumen(df_procesar, resumen, archivo_salida)
+
+    print("✔ Archivo Excel con datos UT + resumen generado.")
 
     fin = time.time()
     duracion = fin - inicio
